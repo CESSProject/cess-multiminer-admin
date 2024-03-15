@@ -10,12 +10,15 @@ node:
   backupChainWsUrls: []
 
 ## chain/rpcnode configurations
+## set option: '--skip-rpcnode' or '-s' to skip installing rpcnode
+## if set option: --skip-rpcnode, please set official rpcnode in bucket[].rpcNodeWsUrl
 rpcnode:
   ## the name of chain/rpcnode node
   name: "cess"
   ## the port of chain/rpcnode node
   port: 30336
-  rpcPort: 9044
+  ## listen rpc service at port 9944
+  rpcPort: 9944
 
 ## bucket configurations  (multi storage miner mode)
 buckets:
@@ -37,6 +40,8 @@ buckets:
     mnemonic: "aaaaa bbbbb ccccc ddddd eeeee fffff ggggg hhhhh iiiii jjjjj kkkkk lllll"
     # a directory mount with filesystem
     diskPath: "/mnt/cess_storage1"
+    # The rpc endpoint of the rpcnode
+    # `official rpcnode: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
     rpcNodeWsUrl: "ws://127.0.0.1:9944/"
     backupRpcNodeWsUrls: []
     # Priority tee list address
@@ -64,7 +69,8 @@ buckets:
     mnemonic: "lllll kkkkk jjjjj iiiii hhhhh ggggg fffff eeeee ddddd ccccc bbbbb aaaaa"
     # a directory mount with filesystem
     diskPath: "/mnt/cess_storage2"
-    # The rpc endpoint of the chain node
+    # The rpc endpoint of the rpcnode
+    # `official rpcnode: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
     rpcNodeWsUrl: "ws://127.0.0.1:9944/"
     backupRpcNodeWsUrls: [ ]
     # Priority tee list address
