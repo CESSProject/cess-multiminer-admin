@@ -7,33 +7,15 @@ source /opt/cess/multibucket-admin/scripts/tools.sh
 
 ########################################base################################################
 
-help() {
-  cat <<EOF
-Usage:  cess-multibucket install [OPTIONS]
-
-Options:
-    -h, --help                show help information
-    -p, --config-path         custom config.yaml path like: /tmp/config.yaml
-    -s, --skip-rpcnode        do not install rpcnode if exist
-EOF
-  exit 0
-}
-
 install() {
   for option in "$@"; do
     case "$option" in
       -s | --skip-rpcnode)
         skip_rpcnode="true"
         ;;
-      -p | --config-path)
-        config_path=$option
-        ;;
       *) echo "Invalid option: $option" ;;
     esac
   done
-
-  # check config file existence and format
-  is_cfgfile_valid
 
   # cores request in config.yaml must less than hardware-cores
   is_base_cores_satisfied
@@ -178,7 +160,9 @@ Usage:
     help                                      show help information
     version                                   show version
 
-    start {chain|kld-sgx|kld-agent|bucket}    start all or one cess service
+    install {chain|kld-sgx|kld-agent|bucket}    start all or one cess service
+       option:
+           -s, --skip-rpcnode        do not install rpcnode if exist
     stop {chain|kld-sgx|kld-agent|bucket}     stop all or one cess service
     reload {chain|kld-sgx|kld-agent|bucket}   reload (stop remove then start) all or one service
     restart {chain|kld-sgx|kld-agent|bucket}  restart all or one cess service
@@ -227,10 +211,6 @@ case "$1" in
   purge)
     shift
     purge $@
-    ;;
-  bucket)
-    shift
-    bucket_ops $@
     ;;
   config)
     shift
