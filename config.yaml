@@ -1,21 +1,20 @@
 ## node configurations template
 node:
-  ## the mode of node: authority/storage/rpcnode/multibucket
   mode: "multibucket"
   ## the profile of node: devnet/testnet/mainnet
   profile: "testnet"
-  # default chain/rpcnode url for bucket, this config can be overwritten in buckets[] as below
+  # default chain url for bucket, this config can be overwritten in buckets[] as below
   chainWsUrl: "ws://127.0.0.1:9944/"
-  # default backup chain/rpcnode urls for bucket, this config can be overwritten in buckets[] as below
+  # default backup chain urls for bucket, this config can be overwritten in buckets[] as below
   backupChainWsUrls: ["wss://testnet-rpc0.cess.cloud/ws/", "wss://testnet-rpc1.cess.cloud/ws/", "wss://testnet-rpc2.cess.cloud/ws/"]
 
-## chain/rpcnode configurations
-## set option: '--skip-chain' or '-s' to skip installing rpcnode (cess-multibucket-admin install --skip-chain)
-## if set option: --skip-chain, please set official rpcnode in bucket[].rpcNodeWsUrl or others rpcnode you know
-rpcnode:
-  ## the name of chain/rpcnode node
+## chain configurations
+## set option: '--skip-chain' or '-s' to skip installing chain (cess-multibucket-admin install --skip-chain)
+## if set option: --skip-chain, please set official chain in bucket[].chainWsUrl or others chain you know
+chain:
+  ## the name of chain node
   name: "cess"
-  ## the port of chain/rpcnode node
+  ## the port of chain node
   port: 30336
   ## listen rpc service at port 9944
   rpcPort: 9944
@@ -40,10 +39,10 @@ buckets:
     mnemonic: "aaaaa bbbbb ccccc ddddd eeeee fffff ggggg hhhhh iiiii jjjjj kkkkk lllll"
     # a directory mount with filesystem
     diskPath: "/mnt/cess_storage1"
-    # The rpc endpoint of the rpcnode
-    # `official rpcnode: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
-    rpcNodeWsUrl: "ws://127.0.0.1:9944/"
-    backupRpcNodeWsUrls: []
+    # The rpc endpoint of the chain
+    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
+    chainWsUrl: "ws://127.0.0.1:9944/"
+    backupChainWsUrls: []
     # Priority tee list address
     TeeList:
       - "127.0.0.1:8080"
@@ -69,10 +68,10 @@ buckets:
     mnemonic: "lllll kkkkk jjjjj iiiii hhhhh ggggg fffff eeeee ddddd ccccc bbbbb aaaaa"
     # a directory mount with filesystem
     diskPath: "/mnt/cess_storage2"
-    # The rpc endpoint of the rpcnode
-    # `official rpcnode: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
-    rpcNodeWsUrl: "ws://127.0.0.1:9944/"
-    backupRpcNodeWsUrls: []
+    # The rpc endpoint of the chain
+    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
+    chainWsUrl: "ws://127.0.0.1:9944/"
+    backupChainWsUrls: []
     # Priority tee list address
     TeeList:
       - "127.0.0.1:8080"
