@@ -103,11 +103,11 @@ config_generate() {
     fi
     cp $build_dir/buckets/* $base_mode_path/buckets/
 
-    if [ ! -d $base_mode_path/rpcnode/ ]; then
-      log_info "mkdir : $base_mode_path/rpcnode/"
-      mkdir -p $base_mode_path/rpcnode/
+    if [ ! -d $base_mode_path/chain/ ]; then
+      log_info "mkdir : $base_mode_path/chain/"
+      mkdir -p $base_mode_path/chain/
     fi
-    cp $build_dir/rpcnode/* $base_mode_path/rpcnode/
+    cp $build_dir/chain/* $base_mode_path/chain/
   else
     log_err "Invalid mode value: $mode"
     exit 1
