@@ -10,8 +10,8 @@ source /opt/cess/multibucket-admin/scripts/tools.sh
 install() {
   for option in "$@"; do
     case "$option" in
-      -s | --skip-rpcnode)
-        skip_rpcnode="true"
+      -s | --skip-chain)
+        skip_chain="true"
         ;;
       *) echo "Invalid option: $option" ;;
     esac
@@ -25,7 +25,7 @@ install() {
 
   # install services with (chain)rpcnode or not
   local services
-  if [ $skip_rpcnode == 'true' ]; then
+  if [ $skip_chain == 'true' ]; then
     local services=$(yq eval '.services | keys | map(select(. != "rpcnode")) | join(" ")' $compose_yaml)
   else
     local services=$(yq eval '.services | keys | join(" ")' $compose_yaml)
@@ -162,7 +162,7 @@ Usage:
 
     install {chain|kld-sgx|kld-agent|bucket}    start all or one cess service
        option:
-           -s, --skip-rpcnode        do not install rpcnode if exist
+           -s, --skip-chain        do not install rpcnode if exist
     stop {chain|kld-sgx|kld-agent|bucket}     stop all or one cess service
     reload {chain|kld-sgx|kld-agent|bucket}   reload (stop remove then start) all or one service
     restart {chain|kld-sgx|kld-agent|bucket}  restart all or one cess service

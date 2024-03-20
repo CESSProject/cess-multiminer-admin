@@ -2,7 +2,7 @@
 
 multibucket_admin_version="v0.0.1"
 aliyun_address="region.cn-hangzhou.aliyuncs.com"
-skip_rpcnode="false"
+skip_chain="false"
 base_dir=/opt/cess/multibucket-admin
 script_dir=$base_dir/scripts
 config_path=$base_dir/config.yaml
@@ -227,9 +227,9 @@ is_base_hardware_satisfied() {
 is_base_cores_satisfied() {
   local bucket_num=$(get_buckets_num)
   local base_buckets_cpu_need=$(($bucket_num * $each_bucket_cpu_req))
-  local base_rpcnode_cpu_need=$([ $skip_rpcnode == "false" ] && echo "$each_rpcnode_cpu_req" || echo "0")
+  local base_rpcnode_cpu_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_cpu_req" || echo "0")
   local buckets_cpu_req_in_cfg=$(yq eval '.buckets[].UseCpu' $config_path | xargs | awk '{ sum = 0; for (i = 1; i <= NF; i++) sum += $i; print sum }')
-  local total_cpu_req=$([ $skip_rpcnode == "false" ] && echo $(($base_buckets_cpu_need + $base_rpcnode_cpu_need)) || echo $base_buckets_cpu_need)
+  local total_cpu_req=$([ $skip_chain == "false" ] && echo $(($base_buckets_cpu_need + $base_rpcnode_cpu_need)) || echo $base_buckets_cpu_need)
 
   local cur_core=$(get_cur_cores)
 
@@ -245,9 +245,9 @@ is_base_ram_satisfied() {
 
   local base_buckets_ram_need=$(($bucket_num * $each_bucket_ram_req))
 
-  local base_rpcnode_ram_need=$([ $skip_rpcnode == "false" ] && echo "$each_rpcnode_ram_req" || echo "0")
+  local base_rpcnode_ram_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_ram_req" || echo "0")
 
-  local total_ram_req=$([ $skip_rpcnode == "false" ] && echo $(($base_buckets_ram_need + $base_rpcnode_ram_need)) || echo $base_buckets_ram_need)
+  local total_ram_req=$([ $skip_chain == "false" ] && echo $(($base_buckets_ram_need + $base_rpcnode_ram_need)) || echo $base_buckets_ram_need)
 
   local cur_ram=$(get_cur_ram)
 

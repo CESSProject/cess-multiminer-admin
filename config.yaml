@@ -4,14 +4,14 @@ node:
   mode: "multibucket"
   ## the profile of node: devnet/testnet/mainnet
   profile: "testnet"
-  # default chain/rpcnode url for bucket, this config will be overwritten in buckets[] as below
-  chainWsUrl: ""
-  # default backup chain/rpcnode urls for bucket, this config will be overwritten in buckets[] as below
-  backupChainWsUrls: []
+  # default chain/rpcnode url for bucket, this config can be overwritten in buckets[] as below
+  chainWsUrl: "ws://127.0.0.1:9944/"
+  # default backup chain/rpcnode urls for bucket, this config can be overwritten in buckets[] as below
+  backupChainWsUrls: ["wss://testnet-rpc0.cess.cloud/ws/", "wss://testnet-rpc1.cess.cloud/ws/", "wss://testnet-rpc2.cess.cloud/ws/"]
 
 ## chain/rpcnode configurations
-## set option: '--skip-rpcnode' or '-s' to skip installing rpcnode
-## if set option: --skip-rpcnode, please set official rpcnode in bucket[].rpcNodeWsUrl
+## set option: '--skip-chain' or '-s' to skip installing rpcnode (cess-multibucket-admin install --skip-chain)
+## if set option: --skip-chain, please set official rpcnode in bucket[].rpcNodeWsUrl or others rpcnode you know
 rpcnode:
   ## the name of chain/rpcnode node
   name: "cess"
@@ -33,7 +33,7 @@ buckets:
     earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     # Staking account
     # If you fill in the staking account, the staking will be paid by the staking account,
-    # otherwise the staking will be paid by the signature account.
+    # otherwise the staking will be paid by the earningsAcc.
     stakingAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     # Signature account mnemonic
     # each bucket's mnemonic should be different
@@ -62,7 +62,7 @@ buckets:
     earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     # Staking account
     # If you fill in the staking account, the staking will be paid by the staking account,
-    # otherwise the staking will be paid by the signature account.
+    # otherwise the staking will be paid by the earningsAcc.
     stakingAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     # Signature account mnemonic
     # each bucket's mnemonic should be different
@@ -72,7 +72,7 @@ buckets:
     # The rpc endpoint of the rpcnode
     # `official rpcnode: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
     rpcNodeWsUrl: "ws://127.0.0.1:9944/"
-    backupRpcNodeWsUrls: [ ]
+    backupRpcNodeWsUrls: []
     # Priority tee list address
     TeeList:
       - "127.0.0.1:8080"
