@@ -57,7 +57,7 @@ install_dependencies() {
       exit 1
     fi
 
-    log_info "------------Install depenencies--------------"
+    log_info "------------Install dependencies--------------"
     apt-get install -y git jq curl wget net-tools
 
   elif [ x"$DISTRO" == x"CentOS" ]; then
@@ -67,7 +67,7 @@ install_dependencies() {
       log_err "Yum update failed"
       exit 1
     fi
-    log_info "------------Install depenencies--------------"
+    log_info "------------Install dependencies--------------"
     yum install -y git jq curl wget net-tools
   fi
 
