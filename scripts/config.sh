@@ -11,11 +11,10 @@ fi
 config_help() {
   cat <<EOF
 cess config usage:
-    help                    show help information
-    show                    show configurations
-    generate                generate docker-compose.yaml by config.yaml
-    pull-image              download corresponding images after set config
-    chain-port {port}       set chain port and generate new configuration, default is 30336
+    -h | help                    show help information
+    -s | show                    show configurations
+    -g | generate                generate docker-compose.yaml by config.yaml
+    -p | pull-image              download corresponding images after set config
 EOF
 }
 
@@ -56,14 +55,14 @@ pull_images_by_mode() {
     try_pull_image cess-chain
     try_pull_image cess-bucket
   else
-    log_err "the node mode is invalid (storage/rpcnode), please config again"
+    log_err "the node mode must be multibucket, please config again"
     return 1
   fi
   log_info "pull images finished"
   return 0
 }
 
-need_remove_service_before_gen=
+
 
 config_generate() {
   # generate each bucket config.yaml and docker-compose.yaml
@@ -81,7 +80,8 @@ config_generate() {
   local cidfile=$(mktemp)
   rm $cidfile
 
-  docker run --cidfile $cidfile -v $base_dir/etc:/opt/app/etc -v $build_dir/.tmp:/opt/app/.tmp -v $config_path:/opt/app/config.yaml cesslab/config-gen:latest
+  local cg_image="cesslab/config-gen:$profile"
+  docker run --cidfile $cidfile -v $base_dir/etc:/opt/app/etc -v $build_dir/.tmp:/opt/app/.tmp -v $config_path:/opt/app/config.yaml $cg_image
 
   local res="$?"
   local cid=$(cat $cidfile)
@@ -123,14 +123,14 @@ config_generate() {
 
 config() {
   case "$1" in
-    show)
+    -s | show)
       config_show
       ;;
-    generate)
+    -g | generate)
       shift
       config_generate $@
       ;;
-    pull-image)
+    -p | pull-image)
       pull_images_by_mode
       ;;
     *)
