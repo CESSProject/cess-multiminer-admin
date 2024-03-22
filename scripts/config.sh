@@ -92,6 +92,8 @@ config_generate() {
     exit 1
   fi
 
+  mk_workdir
+
   cp -r $build_dir/.tmp/* $build_dir/
   rm -rf $build_dir/.tmp
   local base_mode_path=/opt/cess/$mode
