@@ -63,9 +63,9 @@ pull_images_by_mode() {
 }
 
 
-
+# generate each bucket config.yaml and docker-compose.yaml
 config_generate() {
-  # generate each bucket config.yaml and docker-compose.yaml
+
   is_cfgfile_valid
 
   is_ports_valid
@@ -79,6 +79,8 @@ config_generate() {
 
   local cidfile=$(mktemp)
   rm $cidfile
+
+  pullimg
 
   local cg_image="cesslab/config-gen:$profile"
   docker run --cidfile $cidfile -v $base_dir/etc:/opt/app/etc -v $build_dir/.tmp:/opt/app/.tmp -v $config_path:/opt/app/config.yaml $cg_image
