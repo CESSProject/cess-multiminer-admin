@@ -183,7 +183,7 @@ is_cfgfile_valid() {
   log_info "Set Your Config Path"
   read -t 30 -p "Press enter or wait 30s for default, or set your custom absolute config path: " config_path_custom
   if [ -n "$config_path_custom" ]; then
-    config_path=$config_path_custom
+    config_path=$config_path_custom/config.yaml
   fi
 
   log_info "Config Path is: $config_path"
