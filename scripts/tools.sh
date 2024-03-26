@@ -16,11 +16,11 @@ space_info() {
     log_info "Only on multibucket mode"
     exit 1
   fi
+  echo "Filesystem                                        Size  Used Avail Use% Mounted on"
   local disk_path=$(yq eval ".buckets[].diskPath" $config_path | xargs)
   read -a disk_path_arr <<<"$disk_path"
-  # 遍历数组中的每个元素
   for disk_path in "${disk_path_arr[@]}"; do
-    df -h $disk_path
+    df -h $disk_path | tail -n+2
   done
 }
 
@@ -54,7 +54,7 @@ tools() {
     rotate-keys)
       rotate_keys
       ;;
-    space-info)
+    -s | space-info)
       space_info
       ;;
     no_watchs)

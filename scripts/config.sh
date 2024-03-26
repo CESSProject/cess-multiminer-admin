@@ -62,10 +62,8 @@ pull_images_by_mode() {
   return 0
 }
 
-
 # generate each bucket config.yaml and docker-compose.yaml
 config_generate() {
-
   is_cfgfile_valid
 
   is_ports_valid
@@ -134,7 +132,7 @@ config() {
       shift
       config_generate $@
       ;;
-    -p | pull-image)
+    pull-image)
       pull_images_by_mode
       ;;
     *)

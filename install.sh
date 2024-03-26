@@ -12,34 +12,13 @@ local_script_dir=$local_base_dir/scripts
 install_dir="/opt/cess/multibucket-admin"
 source $local_script_dir/utils.sh
 
-ensure_root
-
-get_distro_name
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-if [ x"$DISTRO" != x"Ubuntu" ] && [ x"$DISTRO" != x"CentOS" ]; then
-  log_err "current only support Ubuntu or CentOS"
-  exit 1
-fi
-
-if ! is_kernel_satisfied; then
-  exit 1
-fi
-
-if ! is_base_hardware_satisfied; then
-  exit 1
-fi
-
-
-
 help() {
   cat <<EOF
 Usage:
-    --help                show help information
-    --no-rmi              do not remove the corresponding image when uninstalling the service
-    --retain-config       retain old config when update cess-multibucket-admin
-    --skip-dep            skip install the dependencies
+    -h | --help                show help information
+    -n | --no-rmi              do not remove the corresponding image when uninstalling the service
+    -r | --retain-config       retain old config when update cess-multibucket-admin
+    -s | --skip-dep            skip install the dependencies
 EOF
   exit 0
 }
@@ -210,15 +189,15 @@ install_multi_buckets_admin() {
 
 while true; do
   case "$1" in
-    --skip-dep)
+    -s | --skip-dep)
       skip_dep="true"
       shift 1
       ;;
-    --retain-config)
+    -r | --retain-config)
       retain_config="true"
       shift 1
       ;;
-    --no-rmi)
+    -n | --no-rmi)
       no_rmi=1
       shift 1
       ;;
@@ -232,6 +211,24 @@ while true; do
       ;;
   esac
 done
+
+ensure_root
+get_distro_name
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+if [ x"$DISTRO" != x"Ubuntu" ] && [ x"$DISTRO" != x"CentOS" ]; then
+  log_err "current only support Ubuntu or CentOS"
+  exit 1
+fi
+
+if ! is_kernel_satisfied; then
+  exit 1
+fi
+
+if ! is_base_hardware_satisfied; then
+  exit 1
+fi
 
 install_dependencies
 install_multi_buckets_admin

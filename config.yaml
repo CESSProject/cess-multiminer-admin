@@ -3,10 +3,10 @@ node:
   mode: "multibucket"
   ## the profile of node: devnet/testnet/mainnet
   profile: "testnet"
-  # default chain url for bucket, this config can be overwritten in buckets[] as below
+  # default chain url for bucket, can be overwritten in buckets[] as below
   chainWsUrl: "ws://127.0.0.1:9944/"
-  # default backup chain urls for bucket, this config can be overwritten in buckets[] as below
-  backupChainWsUrls: ["wss://testnet-rpc0.cess.cloud/ws/", "wss://testnet-rpc1.cess.cloud/ws/", "wss://testnet-rpc2.cess.cloud/ws/"]
+  # default backup chain urls for bucket, can be overwritten in buckets[] as below
+  backupChainWsUrls: ["wss://testnet-rpc0.cess.cloud/ws/", "wss://testnet-rpc1.cess.cloud/ws/", "wss://testnet-rpc2.cess.cloud/ws/", "wss://testnet-rpc3.cess.cloud/ws/"]
 
 ## chain configurations
 ## set option: '--skip-chain' or '-s' to skip installing chain (cess-multibucket-admin install --skip-chain)
@@ -21,8 +21,8 @@ chain:
 
 ## bucket configurations  (multi storage miner mode)
 buckets:
-  # P2P communication port
   - name: "bucket_1"
+    # P2P communication port
     port: 15001
     # Maximum space used, the unit is GiB
     UseSpace: 1000
@@ -40,13 +40,10 @@ buckets:
     # a directory mount with filesystem
     diskPath: "/mnt/cess_storage1"
     # The rpc endpoint of the chain
-    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
+    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/` wss://testnet-rpc3.cess.cloud/ws/`
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
     # Priority tee list address
-    TeeList:
-      - "127.0.0.1:8080"
-      - "127.0.0.1:8081"
     # Bootstrap Nodes
     Boot: "_dnsaddr.boot-bucket-testnet.cess.cloud"
 
@@ -69,12 +66,8 @@ buckets:
     # a directory mount with filesystem
     diskPath: "/mnt/cess_storage2"
     # The rpc endpoint of the chain
-    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/`
+    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/` wss://testnet-rpc3.cess.cloud/ws/`
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
-    # Priority tee list address
-    TeeList:
-      - "127.0.0.1:8080"
-      - "127.0.0.1:8081"
     # Bootstrap Nodes
     Boot: "_dnsaddr.boot-bucket-testnet.cess.cloud"
