@@ -1,6 +1,6 @@
 #!/bin/bash
 
-multibucket_admin_version="v0.0.1"
+multibucket_admin_version="v0.0.2"
 aliyun_address="region.cn-hangzhou.aliyuncs.com"
 skip_chain="false"
 base_dir=/opt/cess/multibucket-admin
