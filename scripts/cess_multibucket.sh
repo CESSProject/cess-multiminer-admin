@@ -168,7 +168,16 @@ bucket_ops() {
       fi
       ;;
     exit)
-      $cmd $1 $cfg_arg
+      if [ $# -eq 2 ]; then
+        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
+        $cmd $1 $cfg_arg
+        return 1
+      elif [ $# -eq 1 ]; then
+        $cmd $1 $cfg_arg
+      else
+        log_err "Args Error"
+      fi
       ;;
     withdraw)
       if [ $# -eq 2 ]; then
