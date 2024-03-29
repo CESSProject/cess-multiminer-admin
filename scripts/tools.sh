@@ -16,7 +16,7 @@ space_info() {
     log_info "Only on multibucket mode"
     exit 1
   fi
-  echo "Filesystem                                        Size  Used Avail Use% Mounted on"
+  echo "Filesystem       Size  Used Avail Use% Mounted on"
   local disk_path=$(yq eval ".buckets[].diskPath" $config_path | xargs)
   read -a disk_path_arr <<<"$disk_path"
   for disk_path in "${disk_path_arr[@]}"; do

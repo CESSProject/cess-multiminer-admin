@@ -140,7 +140,7 @@ bucket_ops() {
     return 1
   fi
 
-  docker compose  -f $compose_yaml config 1>/dev/null
+  docker compose -f $compose_yaml config 1>/dev/null
   if [ ! $? -eq 0 ]; then
     log_err "docker-compose.yaml is not valid !"
   fi
@@ -155,34 +155,61 @@ bucket_ops() {
     local cmd="docker run --rm --network=host ${volumes_array[$i]} $bucket_image"
     log_info "Storage node: ${names_array[$i]}\n"
     case "$1" in
-      increase)
+    increase)
+      if [ $# -eq 4 ]; then
+        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
+        $cmd $1 $2 $4 $cfg_arg
+        return 1
+      elif [ $# -eq 3 ]; then
         $cmd $1 $2 $3 $cfg_arg
-        ;;
-      exit)
+      else
+        log_err "Args Error"
+      fi
+      ;;
+    exit)
+      $cmd $1 $cfg_arg
+      ;;
+    withdraw)
+      if [ $# -eq 2 ]; then
+        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
-        ;;
-      withdraw)
+        return 1
+      elif [ $# -eq 1 ]; then
         $cmd $1 $cfg_arg
-        ;;
-      stat)
+      else
+        log_err "Args Error"
+      fi
+      ;;
+    stat)
+      $cmd $1 $cfg_arg
+      ;;
+    reward)
+      $cmd $1 $2 $cfg_arg
+      ;;
+    claim)
+      if [ $# -eq 2 ]; then
+        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
-        ;;
-      reward)
-        $cmd $1 $2 $cfg_arg
-        ;;
-      claim)
-        $cmd $1 $2 $cfg_arg
-        ;;
-      update)
-        if [ "$2" == "earnings" ]; then
-          $cmd $1 $2 $3 $cfg_arg
-        else
-          bucket_ops_help
-        fi
-        ;;
-      *)
+        return 1
+      elif [ $# -eq 1 ]; then
+        $cmd $1 $cfg_arg
+      else
+        log_err "Args Error"
+      fi
+      ;;
+    update)
+      if [ "$2" == "earnings" ]; then
+        $cmd $1 $2 $3 $cfg_arg
+      else
         bucket_ops_help
-        ;;
+      fi
+      ;;
+    *)
+      bucket_ops_help
+      ;;
     esac
     log_info "----------------------------------------------------------------------------\n"
     log_info "----------------------------------------------------------------------------\n"
@@ -255,50 +282,50 @@ EOF
 load_profile
 
 case "$1" in
-  buckets)
-    shift
-    bucket_ops $@
-    ;;
-  -v | version)
-    version
-    ;;
-  install)
-    shift
-    install $@
-    ;;
-  stop)
-    stop $2
-    ;;
-  restart)
-    shift
-    restart $@
-    ;;
-  down)
-    down
-    ;;
-  -s | status)
-    status $2
-    ;;
-  pullimg)
-    pullimg
-    ;;
-  purge)
-    shift
-    purge $@
-    ;;
-  config)
-    shift
-    config $@
-    ;;
-  profile)
-    set_profile $2
-    ;;
-  tools)
-    shift
-    tools $@
-    ;;
-  *)
-    help
-    ;;
+buckets)
+  shift
+  bucket_ops $@
+  ;;
+-v | version)
+  version
+  ;;
+install)
+  shift
+  install $@
+  ;;
+stop)
+  stop $2
+  ;;
+restart)
+  shift
+  restart $@
+  ;;
+down)
+  down
+  ;;
+-s | status)
+  status $2
+  ;;
+pullimg)
+  pullimg
+  ;;
+purge)
+  shift
+  purge $@
+  ;;
+config)
+  shift
+  config $@
+  ;;
+profile)
+  set_profile $2
+  ;;
+tools)
+  shift
+  tools $@
+  ;;
+*)
+  help
+  ;;
 esac
 exit 0
