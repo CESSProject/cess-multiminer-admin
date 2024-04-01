@@ -1,10 +1,16 @@
 #!/bin/bash
 
 no_rmi=0
+keep_running=0
 case "$1" in
---no-rmi)
+  --no-rmi)
     no_rmi=1
-    shift 1
+    ;;
+esac
+
+case "$2" in
+  --keep-running)
+    keep_running=1
     ;;
 esac
 
@@ -17,7 +23,7 @@ if [ $(id -u) -ne 0 ]; then
     exit 1
 fi
 
-if [ -f "$compose_yaml" ]; then
+if [[ -f "$compose_yaml" ]] && [[ $keep_running -eq 0 ]]; then
     docker compose -f $compose_yaml rm -sf
     rmi_opt="--rmi all"
     if [[ $no_rmi -eq 1 ]]; then

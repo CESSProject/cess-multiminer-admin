@@ -8,6 +8,7 @@ local_base_dir=$(
 skip_dep="false"
 retain_config="false"
 no_rmi=0
+keep_running=0
 local_script_dir=$local_base_dir/scripts
 install_dir="/opt/cess/multibucket-admin"
 source $local_script_dir/utils.sh
@@ -19,6 +20,7 @@ Usage:
     -n | --no-rmi              do not remove the corresponding image when uninstalling the service
     -r | --retain-config       retain old config when update cess-multibucket-admin
     -s | --skip-dep            skip install the dependencies
+    -k | --keep-running        do not docker compose down all services if there have previous cess services
 EOF
   exit 0
 }
@@ -163,18 +165,24 @@ install_multi_buckets_admin() {
   if [ -f "$install_dir/scripts/uninstall.sh" ]; then
     echo "Uninstall old cess multibucket admin: $old_version"
     local opt=
+    local keep=
     if [[ $no_rmi -eq 1 ]]; then
       opt="--no-rmi"
     fi
-    sudo bash $install_dir/scripts/uninstall.sh $opt
+    if [[ $keep_running -eq 1 ]]; then
+      keep="--keep-running"
+    fi
+    sudo bash $install_dir/scripts/uninstall.sh $opt $keep
   fi
+
 
   mkdir -p $install_dir
 
+  cp $local_base_dir/config.yaml $dst_config
+
   if [ -f $old_config ]; then
     mv $old_config $install_dir
-  else
-    cp $local_base_dir/config.yaml $dst_config
+    log_info "Save old config in /opt/cess/multibucket-admin: .old_config.yaml"
   fi
   chown root:root $install_dir/config.yaml
   chmod 0600 $install_dir/config.yaml
@@ -199,6 +207,10 @@ while true; do
       ;;
     -n | --no-rmi)
       no_rmi=1
+      shift 1
+      ;;
+    -k | --keep-running)
+      keep_running=1
       shift 1
       ;;
     "")
