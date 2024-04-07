@@ -14,7 +14,6 @@ cess config usage:
     -h | help                    show help information
     -s | show                    show configurations
     -g | generate                generate docker-compose.yaml by config.yaml
-    -p | pull-image              download corresponding images after set config
 EOF
 }
 
@@ -26,40 +25,6 @@ config_show() {
   fi
   local ss=$(join_by , ${keys[@]})
   yq eval ". |= pick([$ss])" $config_path -o json
-}
-
-try_pull_image() {
-  local img_name=$1
-  local img_tag=$2
-
-  local org_name="cesslab"
-  if [ x"$region" == x"cn" ]; then
-    org_name=$aliyun_address/$org_name
-  fi
-  if [ -z $img_tag ]; then
-    img_tag="$profile"
-  fi
-  local img_id="$org_name/$img_name:$img_tag"
-  log_info "download image: $img_id"
-  docker pull $img_id
-  if [ $? -ne 0 ]; then
-    log_err "download image $img_id failed, try again later"
-    exit 1
-  fi
-  return 0
-}
-
-pull_images_by_mode() {
-  log_info "try pull images, node mode: $mode"
-  if [ x"$mode" == x"multibucket" ]; then
-    try_pull_image cess-chain
-    try_pull_image cess-bucket
-  else
-    log_err "the node mode must be multibucket, please config again"
-    return 1
-  fi
-  log_info "pull images finished"
-  return 0
 }
 
 # generate each bucket config.yaml and docker-compose.yaml
@@ -131,9 +96,6 @@ config() {
     -g | generate)
       shift
       config_generate $@
-      ;;
-    pull-image)
-      pull_images_by_mode
       ;;
     *)
       config_help
