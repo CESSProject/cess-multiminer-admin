@@ -39,7 +39,7 @@ install_dependencies() {
     fi
 
     log_info "------------Install dependencies--------------"
-    apt-get install -y git jq curl wget net-tools
+    apt-get install -y git jq curl wget net-tools netcat
 
   elif [ x"$DISTRO" == x"CentOS" ]; then
     log_info "------------Yum update--------------"
@@ -49,7 +49,7 @@ install_dependencies() {
       exit 1
     fi
     log_info "------------Install dependencies--------------"
-    yum install -y git jq curl wget net-tools
+    yum install -y git jq curl wget net-tools nmap-ncat
   fi
 
   if [ $? -ne 0 ]; then
@@ -67,9 +67,9 @@ install_dependencies() {
     fi
     if [ $need_install_yq -eq 1 ]; then
       echo "Begin download yq ..."
-      wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_amd64 -O /tmp/yq \
-        && mv /tmp/yq /usr/bin/yq \
-        && chmod +x /usr/bin/yq
+      wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_amd64 -O /tmp/yq &&
+        mv /tmp/yq /usr/bin/yq &&
+        chmod +x /usr/bin/yq
       if [ $? -eq 0 ]; then
         log_success "yq is successfully installed!"
         yq -V
@@ -130,8 +130,8 @@ install_dependencies() {
 
 install_multi_buckets_admin() {
   local dst_bin=/usr/bin/cess-multibucket-admin
-  local dst_config=$install_dir/config.yaml # /opt/cess/multibucket-admin/config.yaml
-  local dst_utils_sh=$install_dir/scripts/utils.sh #/opt/cess/multibucket-admin/scripts/utils.sh
+  local dst_config=$install_dir/config.yaml           # /opt/cess/multibucket-admin/config.yaml
+  local dst_utils_sh=$install_dir/scripts/utils.sh    #/opt/cess/multibucket-admin/scripts/utils.sh
   local src_utils_sh=$local_base_dir/scripts/utils.sh #/$pwd/scripts/utils.sh
   local old_version=""
   local new_version=""
@@ -175,7 +175,6 @@ install_multi_buckets_admin() {
     sudo bash $install_dir/scripts/uninstall.sh $opt $keep
   fi
 
-
   mkdir -p $install_dir
 
   cp $local_base_dir/config.yaml $dst_config
@@ -197,30 +196,30 @@ install_multi_buckets_admin() {
 
 while true; do
   case "$1" in
-    -s | --skip-dep)
-      skip_dep="true"
-      shift 1
-      ;;
-    -r | --retain-config)
-      retain_config="true"
-      shift 1
-      ;;
-    -n | --no-rmi)
-      no_rmi=1
-      shift 1
-      ;;
-    -k | --keep-running)
-      keep_running=1
-      shift 1
-      ;;
-    "")
-      shift
-      break
-      ;;
-    *)
-      help
-      break
-      ;;
+  -s | --skip-dep)
+    skip_dep="true"
+    shift 1
+    ;;
+  -r | --retain-config)
+    retain_config="true"
+    shift 1
+    ;;
+  -n | --no-rmi)
+    no_rmi=1
+    shift 1
+    ;;
+  -k | --keep-running)
+    keep_running=1
+    shift 1
+    ;;
+  "")
+    shift
+    break
+    ;;
+  *)
+    help
+    break
+    ;;
   esac
 done
 
@@ -230,7 +229,7 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 if [ x"$DISTRO" != x"Ubuntu" ] && [ x"$DISTRO" != x"CentOS" ]; then
-  log_err "current only support Ubuntu or CentOS"
+  log_err "Only support Ubuntu or CentOS currently"
   exit 1
 fi
 
