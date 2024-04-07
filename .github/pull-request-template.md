@@ -1,0 +1,1 @@
+<!-- Please make sure to add one of the labels: [feature], [fix], [documentation] in the Labels option on the right before creating a PR. This is to facilitate the automatic categorization of PRs when Actions automatically generate Releases.-->
