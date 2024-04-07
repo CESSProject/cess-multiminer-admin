@@ -42,7 +42,7 @@ check_port() {
   local port=$1
   local grep_port=$(netstat -tlpn | grep "\b$port\b")
   if [ -n "$grep_port" ]; then
-    log_err "please make sure port $port is not occupied"
+    log_err "please make sure port: $port is not occupied"
     exit 1
   fi
 }
@@ -111,10 +111,10 @@ set_profile() {
   fi
   if [ x"$to_set" == x"devnet" ] || [ x"$to_set" == x"testnet" ] || [ x"$to_set" == x"mainnet" ]; then
     yq -i eval ".node.profile=\"$to_set\"" $config_path
-    log_success "the profile set to $to_set"
+    log_success "set profile to $to_set"
     return 0
   fi
-  log_err "invalid profile value"
+  log_err "Invalid profile value in: devnet/testnet/mainnet"
   return 1
 }
 
@@ -181,12 +181,12 @@ get_buckets_num() {
 
 is_cfgfile_valid() {
   log_info "Set Your Config Path"
-  read -t 30 -p "Press enter or wait 30s for default, or set your custom absolute config path: " config_path_custom
+  read -t 30 -p "Press enter or wait 30s for default, or customize your config path: " config_path_custom
   if [ -n "$config_path_custom" ]; then
     config_path=$config_path_custom/config.yaml
   fi
 
-  log_info "Config Path is: $config_path"
+  log_info "Read Configuration from Path: $config_path"
 
   if [ ! -f "$config_path" ]; then
     log_err "Error: ConfigFileNotFoundException, config.yaml not found in $config_path"
@@ -203,7 +203,7 @@ is_cfgfile_valid() {
 is_kernel_satisfied() {
   local kernal_version=$(uname -r | cut -d . -f 1,2)
   if ! is_ver_a_ge_b $kernal_version $kernel_ver_req; then
-    log_err "The kernel version must be greater than 5.11, your version is $kernal_version. Please upgrade the kernel first."
+    log_err "The kernel version must be greater than 5.11, current version is $kernal_version. Please upgrade the kernel first."
     exit 1
   fi
   log_info "Linux kernel version: $kernal_version"
@@ -213,13 +213,13 @@ is_base_hardware_satisfied() {
   local cur_core=$(get_cur_cores)
   local cur_ram=$(get_cur_ram)
   if [ "$cur_core" -lt $cpu_req ]; then
-    log_err "Cpu Cores must greater than $cpu_req"
+    log_err "Cpu processor must greater than $cpu_req"
     exit 1
   elif [ "$cur_ram" -lt $ram_req ]; then
     log_err "RAM must greater than $ram_req GB"
     exit 1
   else
-    log_info "$cur_core CPU cores and $cur_ram GB of RAM In Server"
+    log_info "$cur_core CPU processors and $cur_ram GB of RAM In Server"
   fi
   return $?
 }
@@ -234,8 +234,8 @@ is_base_cores_satisfied() {
   local cur_core=$(get_cur_cores)
 
   if [ $total_cpu_req -gt $cur_core ] || [ $buckets_cpu_req_in_cfg -gt $cur_core ]; then
-    log_err "Each bucket request $each_bucket_cpu_req core at least, each rpcnode request $each_rpcnode_cpu_req core at least"
-    log_err "Installation request: $total_cpu_req cores in total, but $cur_core in current"
+    log_err "Each bucket request $each_bucket_cpu_req processors at least, each chain request $each_rpcnode_cpu_req processors at least"
+    log_err "Installation request: $total_cpu_req processors in total, but $cur_core in current"
     exit 1
   fi
 }
@@ -252,7 +252,7 @@ is_base_ram_satisfied() {
   local cur_ram=$(get_cur_ram)
 
   if [ $total_ram_req -gt $cur_ram ]; then
-    log_err "Each bucket request $each_bucket_ram_req GB ram at least, each rpcnode request $each_rpcnode_ram_req GB ram at least"
+    log_err "Each bucket request $each_bucket_ram_req GB ram at least, each chain request $each_rpcnode_ram_req GB ram at least"
     log_err "Installation request: $total_ram_req GB ram in total, but $cur_ram in current"
     exit 1
   fi
@@ -270,11 +270,11 @@ is_workpaths_valid() {
   read -a path_arr <<<"$disk_path"
   for disk_path in $path_arr; do
     if [ ! -d "$disk_path" ]; then
-      log_err "Work path do not exist: $disk_path"
+      log_err "Path do not exist: $disk_path"
       exit 1
     fi
     if [[ ! $(findmnt -M "$disk_path") ]]; then
-      log_err "$disk_path do not mount any file system !"
+      log_err "$disk_path do not mount filesystem !"
       exit 1
     fi
   done

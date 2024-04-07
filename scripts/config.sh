@@ -4,7 +4,7 @@ source /opt/cess/multibucket-admin/scripts/utils.sh
 
 mode=$(yq eval ".node.mode" $config_path)
 if [ $? -ne 0 ]; then
-  log_err "the config file: $config_path may be invalid, please reconfig again"
+  log_err "the config file: $config_path is invalid, please re-config again"
   exit 1
 fi
 
@@ -70,7 +70,7 @@ config_generate() {
 
   is_workpaths_valid
 
-  log_info "Start generate configurations and docker compose file"
+  log_info "Start generate buckets configurations and docker-compose file"
 
   rm -rf $build_dir
   mkdir -p $build_dir/.tmp
@@ -88,7 +88,7 @@ config_generate() {
   docker rm $cid
 
   if [ "$res" -ne "0" ]; then
-    log_err "Failed to generate application configs, please check your config.yaml"
+    log_err "Failed to generate configurations, please check your config.yaml"
     exit 1
   fi
 

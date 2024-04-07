@@ -53,7 +53,7 @@ restart() {
   fi
 
   if [ x"$1" = x"" ]; then
-    log_info "Reload all service"
+    log_info "Restart all service"
     docker compose -f $compose_yaml down
     if [ $? -eq 0 ]; then
       docker compose -f $compose_yaml up -d
@@ -70,10 +70,10 @@ restart() {
 
 down() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "No configuration file: docker-compose.yaml is not found in /opt/cess/multibucket-admin/build"
+    log_err "No configuration file: docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
     exit 1
   fi
-  log_info "remove all service"
+  log_info "remove all services"
   docker compose -f $compose_yaml down -v
 }
 
@@ -89,7 +89,7 @@ status() {
 }
 
 purge() {
-  log_info "WARNING: this operate can remove your data regarding program and can't revert."
+  log_info "WARNING: this operation can remove all your data in /opt/cess/multibucket/* and can't revert."
   log_info "         Make sure you understand you do!"
   printf "Press \033[0;33mY\033[0m if you really want to do: "
   local y=""
@@ -122,7 +122,7 @@ purge_chain() {
   stop chain
   rm -rf /opt/cess/$mode/chain/*
   if [ $? -eq 0 ]; then
-    log_success "purge chain data success"
+    log_success "purge chain data successfully"
   fi
 }
 
@@ -130,7 +130,7 @@ purge_bucket() {
   stop bucket
   rm -rf /opt/cess/$mode/bucket/*
   if [ $? -eq 0 ]; then
-    log_success "purge bucket data success"
+    log_success "purge bucket data successfully"
   fi
 }
 
