@@ -153,7 +153,6 @@ bucket_ops() {
   local -r cfg_arg=" -c /opt/bucket/config.yaml"
   for i in "${!volumes_array[@]}"; do
     local cmd="docker run --rm --network=host ${volumes_array[$i]} $bucket_image"
-    log_info "Storage node: ${names_array[$i]}\n"
     case "$1" in
     increase)
       if [ $# -eq 4 ]; then
