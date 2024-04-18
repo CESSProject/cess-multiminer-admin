@@ -31,7 +31,10 @@ config_show() {
 config_generate() {
   is_cfgfile_valid
 
-  is_ports_valid
+  # if user just wanna upgrade multibucket-admin and do not want to stop bucket, skip check port
+  if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-bucket' ; then
+    is_ports_valid
+  fi
 
   is_workpaths_valid
 
@@ -62,7 +65,7 @@ config_generate() {
   cp -r $build_dir/.tmp/* $build_dir/
 
   # change '["CMD", "nc", "-zv", "127.0.0.1", "15001"]'   to   ["CMD", "nc", "-zv", "127.0.0.1", "15001"] in docker-compose.yaml
-  yq eval '.' $build_dir/docker-compose.yaml | grep -n "test: " | awk '{print $1}'| cut -d':' -f1 | xargs -I {} sed -i "{}s/'//;{}s/\(.*\)'/\1/" $build_dir/docker-compose.yaml
+  yq eval '.' $build_dir/docker-compose.yaml | grep -n "test: " | awk '{print $1}' | cut -d':' -f1 | xargs -I {} sed -i "{}s/'//;{}s/\(.*\)'/\1/" $build_dir/docker-compose.yaml
 
   rm -rf $build_dir/.tmp
   local base_mode_path=/opt/cess/$mode
