@@ -272,10 +272,6 @@ is_workpaths_valid() {
       log_err "Path do not exist: $disk_path"
       exit 1
     fi
-    if [[ ! $(findmnt -M "$disk_path") ]]; then
-      log_err "$disk_path do not mount filesystem !"
-      exit 1
-    fi
   done
 }
 
