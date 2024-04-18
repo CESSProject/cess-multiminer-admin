@@ -145,7 +145,7 @@ bucket_ops() {
     log_err "docker-compose.yaml is not valid !"
   fi
   local bucket_names=$(yq eval '.services | keys | map(select(. == "'bucket'*" )) | join(" ")' $compose_yaml)
-  local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^bucket_.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/-/-v/g" | xargs -n 4 echo)
+  local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^bucket_.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
   readarray -t volumes_array <<<"$volumes"
   read -a names_array <<<"$bucket_names"
 
