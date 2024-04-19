@@ -277,7 +277,7 @@ is_workpaths_valid() {
 
 get_cur_ram() {
   local cur_ram=0
-  local ram_unit=$(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $3}' | head -n 1)
+  local ram_unit=$(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $3}' | egrep "GB|MB" | head -n 1)
   if [ "$ram_unit" == "MB" ]; then
     for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}'); do cur_ram=$((cur_ram + $num / 1024)); done
   elif [ "$ram_unit" == "GB" ]; then
