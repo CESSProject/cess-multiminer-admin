@@ -14,5 +14,4 @@ $ sudo cess-multibucket-admin install
 
 # Docs
 
-- Zh Docs: https://docs.cess.cloud/core/v/zh/storage-miner/multi-buckets
-- En Docs: https://docs.cess.cloud/core/storage-miner/multi-buckets
+- Docs: https://docs.cess.cloud/core/storage-miner/multi-buckets
