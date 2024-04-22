@@ -109,6 +109,7 @@ install_dependencies() {
   if [ x"$DISTRO" == x"Ubuntu" ]; then
     local n=$(dpkg -l | grep docker-compose-plugin | wc -l)
     if [ $n -eq 0 ]; then
+      add_docker_apt_repo
       apt-get install -y docker-compose-plugin
       if [ $? -ne 0 ]; then
         log_err "Install docker-compose-plugin failed"
@@ -118,6 +119,7 @@ install_dependencies() {
   elif [ x"$DISTRO" == x"CentOS" ]; then
     local n=$(rpm -qa | grep docker-compose-plugin | wc -l)
     if [ $n -eq 0 ]; then
+      add_docker_centos_repo
       yum install -y docker-compose-plugin
       if [ $? -ne 0 ]; then
         log_err "Install docker-compose-plugin failed"
