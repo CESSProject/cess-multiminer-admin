@@ -1,6 +1,6 @@
 #!/bin/bash
 
-multibucket_admin_version="v0.0.4"
+multibucket_admin_version="v0.0.5"
 skip_chain="false"
 base_dir=/opt/cess/multibucket-admin
 script_dir=$base_dir/scripts

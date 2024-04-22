@@ -10,10 +10,10 @@ source /opt/cess/multibucket-admin/scripts/tools.sh
 install() {
   for option in "$@"; do
     case "$option" in
-      -s | --skip-chain)
-        skip_chain="true"
-        ;;
-      *) echo "Invalid option: $option" ;;
+    -s | --skip-chain)
+      skip_chain="true"
+      ;;
+    *) echo "Invalid option: $option" ;;
     esac
   done
 
@@ -41,7 +41,14 @@ stop() {
     log_err "No configuration file: docker-compose.yaml is not found in /opt/cess/multibucket-admin/build"
     exit 1
   fi
-  docker compose -f $compose_yaml stop $1
+  if [ x"$1" = x"" ]; then
+    log_info "Stop all services"
+    docker compose -f $compose_yaml stop
+    return $?
+  fi
+
+  log_info "Stop service: $*"
+  docker compose -f $compose_yaml stop $*
   return $?
 }
 
@@ -53,7 +60,7 @@ restart() {
   fi
 
   if [ x"$1" = x"" ]; then
-    log_info "Restart all service"
+    log_info "Restart all services"
     docker compose -f $compose_yaml down
     if [ $? -eq 0 ]; then
       docker compose -f $compose_yaml up -d
@@ -61,7 +68,8 @@ restart() {
     return $?
   fi
 
-  docker compose -f $compose_yaml rm -fs $1
+  log_info "Restart service: $*"
+  docker compose -f $compose_yaml rm -fs $*
   if [ $? -eq 0 ]; then
     docker compose -f $compose_yaml up -d
   fi
@@ -73,8 +81,16 @@ down() {
     log_err "No configuration file: docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
     exit 1
   fi
-  log_info "remove all services"
-  docker compose -f $compose_yaml down -v
+
+  if [ x"$1" = x"" ]; then
+    log_info "Remove all services"
+    docker compose -f $compose_yaml down -v
+    return $?
+  fi
+
+  log_info "Remove service: $*"
+  docker compose -f $compose_yaml down $*
+  return $?
 }
 
 pullimg() {
@@ -155,37 +171,79 @@ bucket_ops() {
     local cmd="docker run --rm --network=host ${volumes_array[$i]} $bucket_image"
     case "$1" in
     increase)
+      # sudo cess-multibucket-admin buckets increase staking <bucket name> <deposit amount>
       if [ $# -eq 4 ]; then
         local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $2 $4 $cfg_arg
-        return 1
+        if [ $? -ne 0 ]; then
+          log_err "$3: Increase Operation Failed"
+          exit 1
+        else
+          log_info "$3: Increase Operation Success"
+          return 0
+        fi
+      # sudo cess-multibucket-admin buckets increase staking <deposit amount>
       elif [ $# -eq 3 ]; then
         $cmd $1 $2 $3 $cfg_arg
+        if [ $? -ne 0 ]; then
+          log_err "${names_array[$i]}: Increase Operation Failed"
+          exit 1
+        else
+          log_info "${names_array[$i]}: Increase Operation Success"
+        fi
       else
         log_err "Args Error"
       fi
       ;;
     exit)
+      # sudo cess-multibucket-admin buckets exit <bucket name>
       if [ $# -eq 2 ]; then
         local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
-        return 1
+        if [ $? -ne 0 ]; then
+          log_err "$2: Exit Operation Failed"
+          exit 1
+        else
+          log_info "$2: Exit Operation Success"
+          return 0
+        fi
+      # sudo cess-multibucket-admin buckets exit
       elif [ $# -eq 1 ]; then
         $cmd $1 $cfg_arg
+        if [ $? -ne 0 ]; then
+          log_err "${names_array[$i]}: Exit Operation Failed"
+          exit 1
+        else
+          log_info "${names_array[$i]}: Exit Operation Success"
+        fi
       else
         log_err "Args Error"
       fi
       ;;
     withdraw)
+      # sudo cess-multibucket-admin buckets withdraw <bucket name>
       if [ $# -eq 2 ]; then
         bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
-        return 1
+        if [ $? -ne 0 ]; then
+          log_err "$2: Withdraw Operation Failed"
+          exit 1
+        else
+          log_info "$2: Withdraw Operation Success"
+          return 0
+        fi
+      # sudo cess-multibucket-admin buckets withdraw
       elif [ $# -eq 1 ]; then
         $cmd $1 $cfg_arg
+        if [ $? -ne 0 ]; then
+          log_err "${names_array[$i]}: Withdraw Operation Failed"
+          exit 1
+        else
+          log_info "${names_array[$i]}: Withdraw Operation Success"
+        fi
       else
         log_err "Args Error"
       fi
@@ -197,18 +255,33 @@ bucket_ops() {
       $cmd $1 $2 $cfg_arg
       ;;
     claim)
+      # sudo cess-multibucket-admin buckets claim <bucket name>
       if [ $# -eq 2 ]; then
         bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
-        return 1
+        if [ $? -ne 0 ]; then
+          log_err "$2: Claim Operation Failed"
+          exit 1
+        else
+          log_info "$2: Claim Operation Success"
+          return 0
+        fi
+      # sudo cess-multibucket-admin buckets claim
       elif [ $# -eq 1 ]; then
         $cmd $1 $cfg_arg
+        if [ $? -ne 0 ]; then
+          log_err "${names_array[$i]}: Claim Operation Failed"
+          exit 1
+        else
+          log_info "${names_array[$i]}: Claim Operation Success"
+        fi
       else
         log_err "Args Error"
       fi
       ;;
     update)
+      # sudo cess-multibucket-admin buckets update earnings <earnings account>
       if [ "$2" == "earnings" ]; then
         $cmd $1 $2 $3 $cfg_arg
       else
@@ -219,7 +292,6 @@ bucket_ops() {
       bucket_ops_help
       ;;
     esac
-    log_info "----------------------------------------------------------------------------\n"
     log_info "----------------------------------------------------------------------------\n"
   done
 }
@@ -247,7 +319,7 @@ Usage:
     install                                     run all services
        option:
            -s, --skip-chain                     do not install chain if you do not run a chain at localhost
-    bucket                                      bucket operations
+    buckets                                     buckets operations
        option:
            increase [amount]                    Increase the stakes of storage miner
            exit                                 Unregister the storage miner role
@@ -302,17 +374,20 @@ install)
   install $@
   ;;
 stop)
-  stop $2
+  shift
+  stop $@
   ;;
 restart)
   shift
   restart $@
   ;;
 down)
-  down
+  shift
+  down $@
   ;;
 -s | status)
-  status $2
+  shift
+  status
   ;;
 pullimg)
   pullimg
@@ -326,7 +401,7 @@ config)
   config $@
   ;;
 profile)
-  set_profile $2
+  set_profile
   ;;
 tools)
   shift
