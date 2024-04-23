@@ -264,29 +264,26 @@ is_disk_satisfied() {
   readarray -t diskPath_arr <<<"$diskPath"
   readarray -t useSpace_arr <<<"$useSpace"
 
-  local total_free=0
+  local total_avail=0
   local total_req=0
 
   for i in "${!diskPath_arr[@]}"; do
-    local path_i_freespace=$(df -h "${diskPath_arr[$i]}" | awk '{print $4}' | tail -n 1 | cut -d'G' -f1)
-    total_free=$(($total_free + $path_i_freespace))
+    local path_i_availspace=$(df -h "${diskPath_arr[$i]}" | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
+    if df -h "${diskPath_arr[$i]}" | awk '{print $4}' | tail -n 1 | grep -i "t" >/dev/null; then
+      path_i_availspace=$(($path_i_availspace * 1024))
+    fi
+    total_avail=$((total_avail + path_i_availspace))
   done
 
   for i in "${!useSpace_arr[@]}"; do
     total_req=$(($total_req + ${useSpace_arr[$i]}))
   done
 
-  if [ $total_req -gt $total_free ]; then
-    log_info "Only $total_free GB free in $(echo "$diskPath" | tr "\n" " "), but set $total_req GB UseSpace in total in: $config_path"
-    log_info "This configuration can make your storage nodes be frozen after running for hours!"
-    log_info "Suggest modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
-    log_info "I really understand the consequences of this operation and agree to continue"
-    printf "Press \033[0;33mY\033[0m to continue: "
-    local y=""
-    read y
-    if [ x"$y" != x"Y" ]; then
-      exit 1
-    fi
+  if [ $total_req -gt $total_avail ]; then
+    log_info "Only $total_avail GB available in $(echo "$diskPath" | tr "\n" " "), but set $total_req GB UseSpace in total in: $config_path"
+    log_info "This configuration can make your storage nodes be frozen after running"
+    log_info "Please modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
+    exit 1
   fi
 }
 
@@ -307,14 +304,14 @@ is_workpaths_valid() {
       log_err "Path do not exist: ${path_arr[$i]}"
       exit 1
     fi
-    # if user just wanna upgrade multibucket-admin and do not want to stop bucket, skip check disk
-    if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-bucket'; then
-      local cur_avail=$(df -h ${path_arr[$i]} | awk '{print $4}' | tail -n 1 | cut -d'G' -f1)
-      if [ $cur_avail -lt ${space_arr[$i]} ]; then
-        log_info "This configuration can make your storage nodes be frozen after running for hours!"
-        log_err "Only $cur_avail GB free in ${path_arr[$i]}, but set UseSpace: ${space_arr[$i]} GB in: $config_path"
-        exit 1
-      fi
+    local cur_avail=$(df -h ${path_arr[$i]} | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
+    if df -h ${path_arr[$i]} | awk '{print $2}' | tail -n 1 | grep -i "t" >/dev/null; then
+      cur_avail=$((cur_avail * 1024))
+    fi
+    if [ $cur_avail -lt ${space_arr[$i]} ]; then
+      log_info "This configuration can make your storage nodes be frozen after running"
+      log_err "Only $cur_avail GB available in ${path_arr[$i]}, but set UseSpace: ${space_arr[$i]} GB in: $config_path"
+      exit 1
     fi
   done
 }
