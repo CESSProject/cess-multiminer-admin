@@ -307,11 +307,14 @@ is_workpaths_valid() {
       log_err "Path do not exist: ${path_arr[$i]}"
       exit 1
     fi
-    local cur_avail=$(df -h ${path_arr[$i]} | awk '{print $4}' | tail -n 1 | cut -d'G' -f1)
-    if [ $cur_avail -lt ${space_arr[$i]} ]; then
-      log_info "This configuration can make your storage nodes be frozen after running for hours!"
-      log_err "Only $cur_avail GB free in ${path_arr[$i]}, but set UseSpace: ${space_arr[$i]} GB in: $config_path"
-      exit 1
+    # if user just wanna upgrade multibucket-admin and do not want to stop bucket, skip check disk
+    if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-bucket'; then
+      local cur_avail=$(df -h ${path_arr[$i]} | awk '{print $4}' | tail -n 1 | cut -d'G' -f1)
+      if [ $cur_avail -lt ${space_arr[$i]} ]; then
+        log_info "This configuration can make your storage nodes be frozen after running for hours!"
+        log_err "Only $cur_avail GB free in ${path_arr[$i]}, but set UseSpace: ${space_arr[$i]} GB in: $config_path"
+        exit 1
+      fi
     fi
   done
 }
