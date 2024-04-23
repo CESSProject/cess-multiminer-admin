@@ -18,10 +18,13 @@ install() {
   done
 
   # cores request in config.yaml must less than hardware-cores
-  is_base_cores_satisfied
+  is_cores_satisfied
 
   # ram request in config.yaml must less than hardware-ram
-  is_base_ram_satisfied
+  is_ram_satisfied
+
+  # disk request in config.yaml must less than hardware-disk
+  is_disk_satisfied
 
   # install services with (chain)rpcnode or not
   local services
@@ -162,8 +165,8 @@ bucket_ops() {
   fi
   local bucket_names=$(yq eval '.services | keys | map(select(. == "'bucket'*" )) | join(" ")' $compose_yaml)
   local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^bucket_.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
-  readarray -t volumes_array <<<"$volumes"
-  read -a names_array <<<"$bucket_names"
+  readarray -t volumes_array <<<"$volumes" # read array split with /n
+  read -a names_array <<<"$bucket_names" # read array split with " "
 
   local bucket_image="cesslab/cess-bucket:$profile"
   local -r cfg_arg=" -c /opt/bucket/config.yaml"
@@ -185,6 +188,13 @@ bucket_ops() {
         fi
       # sudo cess-multibucket-admin buckets increase staking <deposit amount>
       elif [ $# -eq 3 ]; then
+        log_info "WARNING: This operation will increase all of your buckets stake"
+        printf "Press \033[0;33mY\033[0m to continue: "
+        local y=""
+        read y
+        if [ x"$y" != x"Y" ]; then
+          exit 1
+        fi
         $cmd $1 $2 $3 $cfg_arg
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Increase Operation Failed"
@@ -211,6 +221,13 @@ bucket_ops() {
         fi
       # sudo cess-multibucket-admin buckets exit
       elif [ $# -eq 1 ]; then
+        log_info "WARNING: This operation will make all of your buckets exit from cess network"
+        printf "Press \033[0;33mY\033[0m to continue: "
+        local y=""
+        read y
+        if [ x"$y" != x"Y" ]; then
+          exit 1
+        fi
         $cmd $1 $cfg_arg
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Exit Operation Failed"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-multibucket_admin_version="v0.0.5"
+multibucket_admin_version="v0.0.6"
 skip_chain="false"
 base_dir=/opt/cess/multibucket-admin
 script_dir=$base_dir/scripts
@@ -173,8 +173,8 @@ get_cpu_core_number() {
 }
 
 get_buckets_num() {
-  local bucket_port_str=$(yq eval '.buckets[].port' $config_path |xargs)
-  read -a ports_arr <<< "$bucket_port_str"
+  local bucket_port_str=$(yq eval '.buckets[].port' $config_path | xargs)
+  read -a ports_arr <<<"$bucket_port_str"
   echo ${#ports_arr[@]}
 }
 
@@ -201,11 +201,11 @@ is_cfgfile_valid() {
 
 is_kernel_satisfied() {
   local kernal_version=$(uname -r | cut -d . -f 1,2)
+  log_info "Linux kernel version: $kernal_version"
   if ! is_ver_a_ge_b $kernal_version $kernel_ver_req; then
     log_err "The kernel version must be greater than 5.11, current version is $kernal_version. Please upgrade the kernel first."
     exit 1
   fi
-  log_info "Linux kernel version: $kernal_version"
 }
 
 is_base_hardware_satisfied() {
@@ -223,7 +223,7 @@ is_base_hardware_satisfied() {
   return $?
 }
 
-is_base_cores_satisfied() {
+is_cores_satisfied() {
   local bucket_num=$(get_buckets_num)
   local base_buckets_cpu_need=$(($bucket_num * $each_bucket_cpu_req))
   local base_rpcnode_cpu_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_cpu_req" || echo "0")
@@ -239,7 +239,7 @@ is_base_cores_satisfied() {
   fi
 }
 
-is_base_ram_satisfied() {
+is_ram_satisfied() {
   local bucket_num=$(get_buckets_num)
 
   local base_buckets_ram_need=$(($bucket_num * $each_bucket_ram_req))
@@ -257,6 +257,39 @@ is_base_ram_satisfied() {
   fi
 }
 
+is_disk_satisfied() {
+  local diskPath=$(yq eval '(.buckets | unique_by(.diskPath)) | .[].diskPath' $config_path)
+  local useSpace=$(yq eval '(.buckets[].UseSpace' $config_path)
+
+  readarray -t diskPath_arr <<<"$diskPath"
+  readarray -t useSpace_arr <<<"$useSpace"
+
+  local total_free=0
+  local total_req=0
+
+  for i in "${!diskPath_arr[@]}"; do
+    local path_i_freespace=$(df -h "${diskPath_arr[$i]}" | awk '{print $4}' | tail -n 1 | cut -d'G' -f1)
+    total_free=$(($total_free + $path_i_freespace))
+  done
+
+  for i in "${!useSpace_arr[@]}"; do
+    total_req=$(($total_req + ${useSpace_arr[$i]}))
+  done
+
+  if [ $total_req -gt $total_free ]; then
+    log_info "Only $total_free GB free in $(echo "$diskPath" | tr "\n" " "), but set $total_req GB UseSpace in total in: $config_path"
+    log_info "This configuration can make your storage nodes be frozen after running for hours!"
+    log_info "Suggest modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
+    log_info "I really understand the consequences of this operation and agree to continue"
+    printf "Press \033[0;33mY\033[0m to continue: "
+    local y=""
+    read y
+    if [ x"$y" != x"Y" ]; then
+      exit 1
+    fi
+  fi
+}
+
 is_ports_valid() {
   local ports=$(yq eval '.buckets[].port' $config_path | xargs)
   for port in $ports; do
@@ -266,10 +299,18 @@ is_ports_valid() {
 
 is_workpaths_valid() {
   local disk_path=$(yq eval '.buckets[].diskPath' $config_path | xargs)
+  local each_space=$(yq eval '.buckets[].UseSpace' $config_path | xargs)
   read -a path_arr <<<"$disk_path"
-  for disk_path in $path_arr; do
-    if [ ! -d "$disk_path" ]; then
-      log_err "Path do not exist: $disk_path"
+  read -a space_arr <<<"$each_space"
+  for i in "${!path_arr[@]}"; do
+    if [ ! -d "${path_arr[$i]}" ]; then
+      log_err "Path do not exist: ${path_arr[$i]}"
+      exit 1
+    fi
+    local cur_avail=$(df -h ${path_arr[$i]} | awk '{print $4}' | tail -n 1 | cut -d'G' -f1)
+    if [ $cur_avail -lt ${space_arr[$i]} ]; then
+      log_info "This configuration can make your storage nodes be frozen after running for hours!"
+      log_err "Only $cur_avail GB free in ${path_arr[$i]}, but set UseSpace: ${space_arr[$i]} GB in: $config_path"
       exit 1
     fi
   done
@@ -287,8 +328,8 @@ add_docker_ubuntu_repo() {
   # Add the repository to Apt sources:
   echo \
     "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
-    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-    sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |
+    sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
   sudo apt-get update
 }
 
