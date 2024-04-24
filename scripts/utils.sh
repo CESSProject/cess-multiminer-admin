@@ -209,32 +209,40 @@ is_kernel_satisfied() {
 }
 
 is_base_hardware_satisfied() {
-  local cur_core=$(get_cur_cores)
+  local cur_processors=$(get_cur_processorss)
   local cur_ram=$(get_cur_ram)
-  if [ "$cur_core" -lt $cpu_req ]; then
+  if [ "$cur_processors" -lt $cpu_req ]; then
     log_err "Cpu processor must greater than $cpu_req"
     exit 1
   elif [ "$cur_ram" -lt $ram_req ]; then
     log_err "RAM must greater than $ram_req GB"
     exit 1
   else
-    log_info "$cur_core CPU processors and $cur_ram GB of RAM In Server"
+    log_info "$cur_processors CPU processors and $cur_ram GB of RAM In Server"
   fi
   return $?
 }
 
-is_cores_satisfied() {
+is_processors_satisfied() {
   local bucket_num=$(get_buckets_num)
-  local base_buckets_cpu_need=$(($bucket_num * $each_bucket_cpu_req))
-  local base_rpcnode_cpu_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_cpu_req" || echo "0")
+  local basic_buckets_cpu_need=$(($bucket_num * $each_bucket_cpu_req))
+  local basic_rpcnode_cpu_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_cpu_req" || echo "0")
   local buckets_cpu_req_in_cfg=$(yq eval '.buckets[].UseCpu' $config_path | xargs | awk '{ sum = 0; for (i = 1; i <= NF; i++) sum += $i; print sum }')
-  local total_cpu_req=$([ $skip_chain == "false" ] && echo $(($base_buckets_cpu_need + $base_rpcnode_cpu_need)) || echo $base_buckets_cpu_need)
+  local basic_cpu_req=$([ $skip_chain == "false" ] && echo $(($basic_buckets_cpu_need + $basic_rpcnode_cpu_need)) || echo $basic_buckets_cpu_need)
+  local actual_cpu_req=$([ $skip_chain == "false" ] && echo $(($buckets_cpu_req_in_cfg + $basic_rpcnode_cpu_need)) || echo $basic_buckets_cpu_need)
 
-  local cur_core=$(get_cur_cores)
+  local cur_processors=$(get_cur_processorss)
 
-  if [ $total_cpu_req -gt $cur_core ] || [ $buckets_cpu_req_in_cfg -gt $cur_core ]; then
-    log_err "Each bucket request $each_bucket_cpu_req processors at least, each chain request $each_rpcnode_cpu_req processors at least"
-    log_err "Installation request: $total_cpu_req processors in total, but $cur_core in current"
+  if [ $basic_cpu_req -gt $cur_processors ]; then
+    log_info "Each bucket request $each_bucket_cpu_req processors at least, each chain request $each_rpcnode_cpu_req processors at least"
+    log_info "Basic installation request: $basic_cpu_req processors in total, but $cur_processors in current"
+    log_err "Please modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
+    exit 1
+  fi
+
+  if [ $actual_cpu_req -gt $cur_processors ]; then
+    log_info "Totally request: $actual_cpu_req processors in $config_path, but $cur_processors in current"
+    log_err "Please modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
     exit 1
   fi
 }
@@ -352,7 +360,7 @@ get_cur_ram() {
   echo $cur_ram # echo can return num > 255
 }
 
-get_cur_cores() {
+get_cur_processorss() {
   local processors=$(grep -c ^processor /proc/cpuinfo)
   echo $processors # echo can return num > 255
 }

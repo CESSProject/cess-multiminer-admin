@@ -18,7 +18,7 @@ install() {
   done
 
   # cores request in config.yaml must less than hardware-cores
-  is_cores_satisfied
+  is_processors_satisfied
 
   # ram request in config.yaml must less than hardware-ram
   is_ram_satisfied
