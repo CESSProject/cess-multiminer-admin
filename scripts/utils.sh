@@ -236,13 +236,13 @@ is_processors_satisfied() {
   if [ $basic_cpu_req -gt $cur_processors ]; then
     log_info "Each bucket request $each_bucket_cpu_req processors at least, each chain request $each_rpcnode_cpu_req processors at least"
     log_info "Basic installation request: $basic_cpu_req processors in total, but $cur_processors in current"
-    log_err "Please modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
+    log_err "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
     exit 1
   fi
 
   if [ $actual_cpu_req -gt $cur_processors ]; then
     log_info "Totally request: $actual_cpu_req processors in $config_path, but $cur_processors in current"
-    log_err "Please modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
+    log_err "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
     exit 1
   fi
 }
@@ -290,7 +290,7 @@ is_disk_satisfied() {
   if [ $total_req -gt $total_avail ]; then
     log_info "Only $total_avail GB available in $(echo "$diskPath" | tr "\n" " "), but set $total_req GB UseSpace in total in: $config_path"
     log_info "This configuration can make your storage nodes be frozen after running"
-    log_info "Please modify configuration in $config_path and execute: cess-multibucket-admin config generate again"
+    log_info "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
     exit 1
   fi
 }

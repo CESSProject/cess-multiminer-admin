@@ -30,6 +30,11 @@ install() {
   local services
   if [ $skip_chain == 'true' ]; then
     local services=$(yq eval '.services | keys | map(select(. != "chain")) | join(" ")' $compose_yaml)
+    if [ "$(yq eval '.services | has("chain")' $compose_yaml)" == 'true' ]; then
+      yq eval 'del(.services.chain)' -i $compose_yaml
+      log_info "Chain configuration has deleted in: $compose_yaml"
+      log_info "Execute [ sudo cess-multibucket-admin config generate ] to restore"
+    fi
   else
     local services=$(yq eval '.services | keys | join(" ")' $compose_yaml)
   fi
@@ -41,7 +46,7 @@ install() {
 
 stop() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "No configuration file: docker-compose.yaml is not found in /opt/cess/multibucket-admin/build"
+    log_err "docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
     exit 1
   fi
   if [ x"$1" = x"" ]; then
@@ -58,7 +63,7 @@ stop() {
 restart() {
   #  restart configuration from config.yaml and regenerate docker-compose.yaml
   if [ ! -f "$compose_yaml" ]; then
-    log_err "No configuration file: docker-compose.yaml is not found in /opt/cess/multibucket-admin/build"
+    log_err "docker-compose.yaml is not found in /opt/cess/multibucket-admin/build"
     exit 1
   fi
 
@@ -81,7 +86,7 @@ restart() {
 
 down() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "No configuration file: docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
+    log_err "docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
     exit 1
   fi
 
@@ -163,13 +168,41 @@ bucket_ops() {
   if [ ! $? -eq 0 ]; then
     log_err "docker-compose.yaml is not valid !"
   fi
+
+  case "$1" in
+  increase)
+    if [ $# -eq 3 ]; then
+      log_info "WARNING: This operation will increase all of your buckets stake"
+      printf "Press \033[0;33mY\033[0m to continue: "
+      local y=""
+      read y
+      if [ x"$y" != x"Y" ]; then
+        exit 1
+      fi
+    fi
+    ;;
+  exit)
+    if [ $# -eq 1 ]; then
+      log_info "WARNING: This operation will make all of your buckets exit from cess network"
+      printf "Press \033[0;33mY\033[0m to continue: "
+      local y=""
+      read y
+      if [ x"$y" != x"Y" ]; then
+        exit 1
+      fi
+    fi
+    ;;
+  *) ;;
+  esac
+
   local bucket_names=$(yq eval '.services | keys | map(select(. == "'bucket'*" )) | join(" ")' $compose_yaml)
   local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^bucket_.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
   readarray -t volumes_array <<<"$volumes" # read array split with /n
-  read -a names_array <<<"$bucket_names" # read array split with " "
+  read -a names_array <<<"$bucket_names"   # read array split with " "
 
   local bucket_image="cesslab/cess-bucket:$profile"
   local -r cfg_arg=" -c /opt/bucket/config.yaml"
+
   for i in "${!volumes_array[@]}"; do
     local cmd="docker run --rm --network=host ${volumes_array[$i]} $bucket_image"
     case "$1" in
@@ -188,13 +221,6 @@ bucket_ops() {
         fi
       # sudo cess-multibucket-admin buckets increase staking <deposit amount>
       elif [ $# -eq 3 ]; then
-        log_info "WARNING: This operation will increase all of your buckets stake"
-        printf "Press \033[0;33mY\033[0m to continue: "
-        local y=""
-        read y
-        if [ x"$y" != x"Y" ]; then
-          exit 1
-        fi
         $cmd $1 $2 $3 $cfg_arg
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Increase Operation Failed"
@@ -221,13 +247,6 @@ bucket_ops() {
         fi
       # sudo cess-multibucket-admin buckets exit
       elif [ $# -eq 1 ]; then
-        log_info "WARNING: This operation will make all of your buckets exit from cess network"
-        printf "Press \033[0;33mY\033[0m to continue: "
-        local y=""
-        read y
-        if [ x"$y" != x"Y" ]; then
-          exit 1
-        fi
         $cmd $1 $cfg_arg
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Exit Operation Failed"
@@ -266,10 +285,21 @@ bucket_ops() {
       fi
       ;;
     stat)
+      log_info "${names_array[$i]}"
       $cmd $1 $cfg_arg
+      if [ $? -ne 0 ]; then
+        log_err "${names_array[$i]}: Query Status Failed"
+      fi
       ;;
     reward)
       $cmd $1 $2 $cfg_arg
+      if [ $? -ne 0 ]; then
+        log_err "Query Reward Operation Failed"
+        exit 1
+      else
+        log_info "Query Reward Operation Success"
+        return 0
+      fi
       ;;
     claim)
       # sudo cess-multibucket-admin buckets claim <bucket name>
@@ -292,6 +322,7 @@ bucket_ops() {
           exit 1
         else
           log_info "${names_array[$i]}: Claim Operation Success"
+          return 0
         fi
       else
         log_err "Args Error"
@@ -301,8 +332,10 @@ bucket_ops() {
       # sudo cess-multibucket-admin buckets update earnings <earnings account>
       if [ "$2" == "earnings" ]; then
         $cmd $1 $2 $3 $cfg_arg
+        return 0
       else
         bucket_ops_help
+        return 0
       fi
       ;;
     *)
