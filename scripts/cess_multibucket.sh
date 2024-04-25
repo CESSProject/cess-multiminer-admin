@@ -349,7 +349,7 @@ bucket_ops() {
 
 bucket_ops_help() {
   cat <<EOF
-cess bucket usage (only on storage mode):
+cess buckets usage:
     increase [amount]                   Increase the stakes of storage miner
     exit                                Unregister the storage miner role
     withdraw                            Withdraw stakes
