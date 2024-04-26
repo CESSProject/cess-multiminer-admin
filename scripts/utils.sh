@@ -1,6 +1,6 @@
 #!/bin/bash
 
-multibucket_admin_version="v0.0.6"
+multibucket_admin_version="v0.0.7"
 skip_chain="false"
 base_dir=/opt/cess/multibucket-admin
 script_dir=$base_dir/scripts
@@ -35,6 +35,13 @@ function log_success() {
 
 function log_err() {
   echo_c 35 "[ERROR] $1"
+}
+
+is_ports_valid() {
+  local ports=$(yq eval '.buckets[].port' $config_path | xargs)
+  for port in $ports; do
+    check_port $port
+  done
 }
 
 check_port() {
@@ -173,19 +180,14 @@ get_cpu_core_number() {
 }
 
 get_buckets_num() {
+  # get bucket num by port's num
   local bucket_port_str=$(yq eval '.buckets[].port' $config_path | xargs)
   read -a ports_arr <<<"$bucket_port_str"
   echo ${#ports_arr[@]}
 }
 
 is_cfgfile_valid() {
-  log_info "Set Your Config Path"
-  read -t 30 -p "Press enter or wait 30s for default, or customize your config path: " config_path_custom
-  if [ -n "$config_path_custom" ]; then
-    config_path=$config_path_custom/config.yaml
-  fi
-
-  log_info "Read Configuration from Path: $config_path"
+  log_info "Read configuration from Path: $config_path"
 
   if [ ! -f "$config_path" ]; then
     log_err "Error: ConfigFileNotFoundException, config.yaml not found in $config_path"
@@ -194,7 +196,7 @@ is_cfgfile_valid() {
 
   yq '.' "$config_path" >/dev/null
   if [ $? -ne 0 ]; then
-    log_err "Config File: config.yaml Parse Error, Please Check Your File Format"
+    log_err "$config_path Parse Error, Please Check Your File Format"
     exit 1
   fi
 }
@@ -203,7 +205,7 @@ is_kernel_satisfied() {
   local kernal_version=$(uname -r | cut -d . -f 1,2)
   log_info "Linux kernel version: $kernal_version"
   if ! is_ver_a_ge_b $kernal_version $kernel_ver_req; then
-    log_err "The kernel version must be greater than 5.11, current version is $kernal_version. Please upgrade the kernel first."
+    log_err "The kernel version must be greater than 5.11, current version is $kernal_version. Please upgrade the kernel at first."
     exit 1
   fi
 }
@@ -261,7 +263,7 @@ is_ram_satisfied() {
 
   if [ $total_ram_req -gt $cur_ram ]; then
     log_info "Each bucket request $each_bucket_ram_req GB ram at least, each chain request $each_rpcnode_ram_req GB ram at least"
-    log_info "Installation request: $total_ram_req GB ram in total, but $cur_ram in current"
+    log_info "Installation request: $total_ram_req GB in total, but $cur_ram GB in current"
     log_info "Run too much storage node might make your server overload"
     log_err "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
     exit 1
@@ -296,13 +298,6 @@ is_disk_satisfied() {
     log_info "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
     exit 1
   fi
-}
-
-is_ports_valid() {
-  local ports=$(yq eval '.buckets[].port' $config_path | xargs)
-  for port in $ports; do
-    check_port $port
-  done
 }
 
 is_workpaths_valid() {
@@ -382,6 +377,12 @@ split_buckets_config() {
     local get_disk_path_by_index="yq eval '.buckets[$i].diskPath' $config_path"
     local each_path="$(eval "$get_disk_path_by_index")/bucket/config.yaml"
     eval $get_bucket_config_by_index >$each_path
+    if [ $? -ne 0 ]; then
+      log_err "Fail to generate file: $each_path"
+      exit 1
+    else
+      log_success "bucket_$i configuration generated at: $each_path"
+    fi
   done
 }
 

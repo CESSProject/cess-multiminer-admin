@@ -2,11 +2,11 @@
 
 source /opt/cess/multibucket-admin/scripts/utils.sh
 
-mode=$(yq eval ".node.mode" $config_path)
-if [ $? -ne 0 ]; then
-  log_err "the config file: $config_path is invalid, please re-config again"
-  exit 1
+if [ "$mode" != "multibucket" ]; then
+  log_info "The mode in $config_path is invalid, set value to: multibucket"
+  yq -i eval ".node.mode=\"multibucket\"" $config_path
 fi
+mode=$(yq eval ".node.mode" $config_path)
 
 config_help() {
   cat <<EOF
@@ -32,7 +32,7 @@ config_generate() {
   is_cfgfile_valid
 
   # if user just wanna upgrade multibucket-admin and do not want to stop bucket, skip check port
-  if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-bucket' ; then
+  if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-bucket'; then
     is_ports_valid
   fi
 
@@ -92,20 +92,20 @@ config_generate() {
 
   split_buckets_config
 
-  log_success "Configurations generated at: $build_dir"
+  log_success "docker-compose.yaml generated at: $build_dir"
 }
 
 config() {
   case "$1" in
-    -s | show)
-      config_show
-      ;;
-    -g | generate)
-      shift
-      config_generate $@
-      ;;
-    *)
-      config_help
-      ;;
+  -s | show)
+    config_show
+    ;;
+  -g | generate)
+    shift
+    config_generate
+    ;;
+  *)
+    config_help
+    ;;
   esac
 }

@@ -61,7 +61,6 @@ stop() {
 }
 
 restart() {
-  #  restart configuration from config.yaml and regenerate docker-compose.yaml
   if [ ! -f "$compose_yaml" ]; then
     log_err "docker-compose.yaml is not found in /opt/cess/multibucket-admin/build"
     exit 1
@@ -160,11 +159,11 @@ purge_bucket() {
 
 bucket_ops() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "No configuration file, please set config"
+    log_err "docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
     return 1
   fi
 
-  docker compose -f $compose_yaml config 1>/dev/null
+  docker compose -f $compose_yaml config >/dev/null
   if [ ! $? -eq 0 ]; then
     log_err "docker-compose.yaml is not valid !"
   fi
@@ -199,7 +198,6 @@ bucket_ops() {
   local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^bucket_.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
   readarray -t volumes_array <<<"$volumes" # read array split with /n
   read -a names_array <<<"$bucket_names"   # read array split with " "
-
   local bucket_image="cesslab/cess-bucket:$profile"
   local -r cfg_arg=" -c /opt/bucket/config.yaml"
 
@@ -209,7 +207,7 @@ bucket_ops() {
     increase)
       # sudo cess-multibucket-admin buckets increase staking <bucket name> <deposit amount>
       if [ $# -eq 4 ]; then
-        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $2 $4 $cfg_arg
         if [ $? -ne 0 ]; then
@@ -217,7 +215,7 @@ bucket_ops() {
           exit 1
         else
           log_info "$3: Increase Operation Success"
-          return 0
+          exit 0
         fi
       # sudo cess-multibucket-admin buckets increase staking <deposit amount>
       elif [ $# -eq 3 ]; then
@@ -230,12 +228,13 @@ bucket_ops() {
         fi
       else
         log_err "Args Error"
+        exit 1
       fi
       ;;
     exit)
       # sudo cess-multibucket-admin buckets exit <bucket name>
       if [ $# -eq 2 ]; then
-        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
         if [ $? -ne 0 ]; then
@@ -243,7 +242,7 @@ bucket_ops() {
           exit 1
         else
           log_info "$2: Exit Operation Success"
-          return 0
+          exit 0
         fi
       # sudo cess-multibucket-admin buckets exit
       elif [ $# -eq 1 ]; then
@@ -256,12 +255,13 @@ bucket_ops() {
         fi
       else
         log_err "Args Error"
+        exit 1
       fi
       ;;
     withdraw)
       # sudo cess-multibucket-admin buckets withdraw <bucket name>
       if [ $# -eq 2 ]; then
-        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
         if [ $? -ne 0 ]; then
@@ -269,7 +269,7 @@ bucket_ops() {
           exit 1
         else
           log_info "$2: Withdraw Operation Success"
-          return 0
+          exit 0
         fi
       # sudo cess-multibucket-admin buckets withdraw
       elif [ $# -eq 1 ]; then
@@ -282,29 +282,32 @@ bucket_ops() {
         fi
       else
         log_err "Args Error"
+        exit 1
       fi
       ;;
+    # sudo cess-multibucket-admin buckets stat
     stat)
-      log_info "${names_array[$i]}"
       $cmd $1 $cfg_arg
       if [ $? -ne 0 ]; then
         log_err "${names_array[$i]}: Query Status Failed"
+      else
+        log_info "${names_array[$i]}: Query Status Success"
       fi
       ;;
+    # sudo cess-multibucket-admin buckets reward
     reward)
-      $cmd $1 $2 $cfg_arg
+      $cmd $1 $cfg_arg
       if [ $? -ne 0 ]; then
-        log_err "Query Reward Operation Failed"
+        log_err "${names_array[$i]}: Reward Operation Failed"
         exit 1
       else
-        log_info "Query Reward Operation Success"
-        return 0
+        log_info "${names_array[$i]}: Reward Operation Success"
       fi
       ;;
     claim)
       # sudo cess-multibucket-admin buckets claim <bucket name>
       if [ $# -eq 2 ]; then
-        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed s/["["]/"-v "/g | sed s/":rw "/" -v "/g | sed s/":rw]"//g)
+        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
         $cmd $1 $cfg_arg
         if [ $? -ne 0 ]; then
@@ -312,7 +315,7 @@ bucket_ops() {
           exit 1
         else
           log_info "$2: Claim Operation Success"
-          return 0
+          exit 0
         fi
       # sudo cess-multibucket-admin buckets claim
       elif [ $# -eq 1 ]; then
@@ -322,20 +325,26 @@ bucket_ops() {
           exit 1
         else
           log_info "${names_array[$i]}: Claim Operation Success"
-          return 0
         fi
       else
         log_err "Args Error"
+        exit 1
       fi
       ;;
     update)
       # sudo cess-multibucket-admin buckets update earnings <earnings account>
       if [ "$2" == "earnings" ]; then
         $cmd $1 $2 $3 $cfg_arg
-        return 0
+        if [ $? -ne 0 ]; then
+          log_err "$3: Update Operation Failed"
+          exit 1
+        else
+          log_info "$3: Update Operation Success"
+          exit 0
+        fi
       else
         bucket_ops_help
-        return 0
+        exit 0
       fi
       ;;
     *)
