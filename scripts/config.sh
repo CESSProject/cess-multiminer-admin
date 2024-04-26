@@ -2,11 +2,12 @@
 
 source /opt/cess/multibucket-admin/scripts/utils.sh
 
-if [ "$mode" != "multibucket" ]; then
+mode=$(yq eval ".node.mode" $config_path)
+if [ x"$mode" != x"multibucket" ]; then
   log_info "The mode in $config_path is invalid, set value to: multibucket"
   yq -i eval ".node.mode=\"multibucket\"" $config_path
+  mode=$(yq eval ".node.mode" $config_path)
 fi
-mode=$(yq eval ".node.mode" $config_path)
 
 config_help() {
   cat <<EOF
