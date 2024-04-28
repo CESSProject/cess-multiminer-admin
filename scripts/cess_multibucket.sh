@@ -209,22 +209,35 @@ bucket_ops() {
       if [ $# -eq 4 ]; then
         local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
-        $cmd $1 $2 $4 $cfg_arg
+        res=$($cmd $1 $2 $4 $cfg_arg)
+        log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "$3: Increase Operation Failed"
           exit 1
         else
-          log_info "$3: Increase Operation Success"
+          if echo "$res" | grep -q "!"; then
+            log_err "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
+            log_err "$3: Increase Operation Failed"
+          else
+            log_success "$3: Increase Operation Success"
+          fi
           exit 0
         fi
       # sudo cess-multibucket-admin buckets increase staking <deposit amount>
       elif [ $# -eq 3 ]; then
-        $cmd $1 $2 $3 $cfg_arg
+        res=$($cmd $1 $2 $3 $cfg_arg)
+        log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Increase Operation Failed"
           exit 1
         else
-          log_info "${names_array[$i]}: Increase Operation Success"
+          if echo "$res" | grep -q "!"; then
+            log_err "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
+            log_err "${names_array[$i]}: Increase Operation Failed"
+            exit 1
+          else
+            log_info "${names_array[$i]}: Increase Operation Success"
+          fi
         fi
       else
         log_err "Args Error"
@@ -232,26 +245,49 @@ bucket_ops() {
       fi
       ;;
     exit)
+      log_info "I am sure that I have staked for more than 180 days"
+      printf "Press \033[0;33mY\033[0m to continue: "
+      local y=""
+      read y
+      if [ x"$y" != x"Y" ]; then
+        echo "Cancel Exit Operation"
+        return 1
+      fi
       # sudo cess-multibucket-admin buckets exit <bucket name>
       if [ $# -eq 2 ]; then
         local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
-        $cmd $1 $cfg_arg
+        res=$($cmd $1 $cfg_arg)
+        log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "$2: Exit Operation Failed"
           exit 1
         else
-          log_info "$2: Exit Operation Success"
+          if echo "$res" | grep -q "!"; then
+            log_err "Stake less than 180 days or network issue"
+            log_err "$2: Exit Operation Failed"
+            exit 1
+          else
+            log_info "$2: Exit Operation Success"
+          fi
           exit 0
         fi
       # sudo cess-multibucket-admin buckets exit
       elif [ $# -eq 1 ]; then
-        $cmd $1 $cfg_arg
+        res=$($cmd $1 $cfg_arg)
+        log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Exit Operation Failed"
           exit 1
         else
-          log_info "${names_array[$i]}: Exit Operation Success"
+          if echo "$res" | grep -q "!"; then
+            log_err "Stake less than 180 days or network issue"
+            log_err "${names_array[$i]}: Exit Operation Failed"
+            exit 1
+          else
+            log_info "${names_array[$i]}: Exit Operation Success"
+          fi
+          exit 0
         fi
       else
         log_err "Args Error"
@@ -263,22 +299,36 @@ bucket_ops() {
       if [ $# -eq 2 ]; then
         bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
         local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
-        $cmd $1 $cfg_arg
+        res=$($cmd $1 $cfg_arg)
+        log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "$2: Withdraw Operation Failed"
           exit 1
         else
-          log_info "$2: Withdraw Operation Success"
+          if echo "$res" | grep -q "!"; then
+            log_err "Please make sure you have staked for more than 180 days and the storage node have exit the cess network"
+            log_err "$2: Withdraw Operation Failed"
+            exit 1
+          else
+            log_info "$2: Withdraw Operation Success"
+          fi
           exit 0
         fi
       # sudo cess-multibucket-admin buckets withdraw
       elif [ $# -eq 1 ]; then
-        $cmd $1 $cfg_arg
+        res=$($cmd $1 $cfg_arg)
+        log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Withdraw Operation Failed"
           exit 1
         else
-          log_info "${names_array[$i]}: Withdraw Operation Success"
+          if echo "$res" | grep -q "!"; then
+            log_err "Please make sure you have staked for more than 180 days and the storage node have exit the cess network"
+            log_err "${names_array[$i]}: Withdraw Operation Failed"
+            exit 1
+          else
+            log_info "${names_array[$i]}: Withdraw Operation Success"
+          fi
         fi
       else
         log_err "Args Error"
