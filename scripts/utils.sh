@@ -281,18 +281,20 @@ is_disk_satisfied() {
   local total_req=0
 
   for i in "${!diskPath_arr[@]}"; do
-    local path_i_availspace=$(df -h "${diskPath_arr[$i]}" | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
+    local path_i_size=$(df -h "${diskPath_arr[$i]}" | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
     if df -h "${diskPath_arr[$i]}" | awk '{print $4}' | tail -n 1 | grep -i "t" >/dev/null; then
-      path_i_availspace=$(($path_i_availspace * 1024))
+      path_i_size=$(echo "scale=3; $path_i_size * 1024" | bc)
     fi
-    total_avail=$((total_avail + path_i_availspace))
+    total_avail=$(echo "$total_avail + $path_i_size" | bc)
   done
 
   for i in "${!useSpace_arr[@]}"; do
-    total_req=$(($total_req + ${useSpace_arr[$i]}))
+    total_req=$(echo "$total_req + ${useSpace_arr[$i]}" | bc)
   done
 
-  if [ $total_req -gt $total_avail ]; then
+  result=$(echo "$total_avail < $total_req" | bc)
+
+  if [ "$result" -eq 1 ]; then
     log_info "Only $total_avail GB available in $(echo "$diskPath" | tr "\n" " "), but set $total_req GB UseSpace in total in: $config_path"
     log_info "This configuration can make your storage nodes be frozen after running"
     log_info "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
@@ -312,9 +314,10 @@ is_workpaths_valid() {
     fi
     local cur_avail=$(df -h ${path_arr[$i]} | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
     if df -h ${path_arr[$i]} | awk '{print $2}' | tail -n 1 | grep -i "t" >/dev/null; then
-      cur_avail=$((cur_avail * 1024))
+      cur_avail=$(echo "scale=3; $cur_avail * 1024" | bc)
     fi
-    if [ $cur_avail -lt ${space_arr[$i]} ]; then
+    result=$(echo "$cur_avail < ${space_arr[$i]}" | bc)
+    if [ "$result" -eq 1 ]; then
       log_info "This configuration can make your storage nodes be frozen after running"
       log_err "Only $cur_avail GB available in ${path_arr[$i]}, but set UseSpace: ${space_arr[$i]} GB in: $config_path"
       exit 1
@@ -349,7 +352,7 @@ get_cur_ram() {
   local cur_ram=0
   local ram_unit=$(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $3}' | egrep "GB|MB" | head -n 1)
   if [ "$ram_unit" == "MB" ]; then
-    for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}'); do cur_ram=$((cur_ram + $num / 1024)); done
+    for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}'); do cur_ram=$((cur_ram + $num / 1000)); done
   elif [ "$ram_unit" == "GB" ]; then
     for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}'); do cur_ram=$((cur_ram + $num)); done
   else
