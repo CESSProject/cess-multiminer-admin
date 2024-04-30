@@ -299,7 +299,7 @@ miner_ops() {
             log_err "$2: Withdraw Operation Failed"
             exit 1
           else
-            log_info "$2: Withdraw Operation Success"
+            log_success "$2: Withdraw Operation Success"
             exit 0
           fi
         fi
@@ -314,7 +314,7 @@ miner_ops() {
             log_info "Please make sure the miner have staked for more than 180 days and the miner have exit the cess network"
             log_err "${names_array[$i]}: Withdraw Operation Failed"
           else
-            log_info "${names_array[$i]}: Withdraw Operation Success"
+            log_success "${names_array[$i]}: Withdraw Operation Success"
           fi
         fi
       else
@@ -326,9 +326,9 @@ miner_ops() {
     stat)
       $cmd $1 $cfg_arg
       if [ $? -ne 0 ]; then
-        log_err "${names_array[$i]}: Query Status Failed"
+        log_err "${names_array[$i]}: Query Failed"
       else
-        log_info "${names_array[$i]}: Query Status Success"
+        log_success "${names_array[$i]}: Query Success"
       fi
       ;;
     # sudo mineradm miners reward
@@ -338,7 +338,7 @@ miner_ops() {
         log_err "${names_array[$i]}: Reward Operation Failed"
         exit 1
       else
-        log_info "${names_array[$i]}: Reward Operation Success"
+        log_success "${names_array[$i]}: Reward Operation Success"
       fi
       ;;
     claim)
@@ -351,7 +351,7 @@ miner_ops() {
           log_err "$2: Claim Operation Failed"
           exit 1
         else
-          log_info "$2: Claim Operation Success"
+          log_success "$2: Claim Operation Success"
           exit 0
         fi
       # sudo mineradm miners claim
@@ -360,7 +360,7 @@ miner_ops() {
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Claim Operation Failed"
         else
-          log_info "${names_array[$i]}: Claim Operation Success"
+          log_success "${names_array[$i]}: Claim Operation Success"
         fi
       else
         log_err "Args Error"
@@ -375,7 +375,7 @@ miner_ops() {
           log_err "$3: Update Operation Failed"
           exit 1
         else
-          log_info "$3: Update Operation Success"
+          log_success "$3: Update Operation Success"
           exit 0
         fi
       else
