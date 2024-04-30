@@ -190,7 +190,7 @@ install_mineradm() {
 
   cp -r $local_base_dir/scripts $install_dir/
 
-  cp $local_script_dir/miners.sh $dst_bin
+  cp $local_script_dir/miner.sh $dst_bin
   chmod +x $dst_bin
 
   log_success "Install cess mineradm success"
