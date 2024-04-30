@@ -1,6 +1,6 @@
 #!/bin/bash
 
-source /opt/cess//scripts/utils.sh
+source /opt/cess/mineradm/scripts/utils.sh
 
 version() {
   printf "Node mode: ${mode}\n"
