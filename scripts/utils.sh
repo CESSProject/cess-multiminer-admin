@@ -1,8 +1,8 @@
 #!/bin/bash
 
-multibucket_admin_version="v0.0.7"
+mineradm_version="v0.0.1"
 skip_chain="false"
-base_dir=/opt/cess/multibucket-admin
+base_dir=/opt/cess/mineradm
 script_dir=$base_dir/scripts
 config_path=$base_dir/config.yaml
 build_dir=$base_dir/build
@@ -16,8 +16,8 @@ ram_req=8
 PM=""
 DISTRO=""
 
-each_bucket_ram_req=4  # at least 4GB RAM for each bucket
-each_bucket_cpu_req=1  # at least 1 core for each bucket
+each_miner_ram_req=4  # at least 4GB RAM for each miner
+each_miner_cpu_req=1  # at least 1 core for each miner
 each_rpcnode_ram_req=2 # at least 2GB RAM for each rpcnode
 each_rpcnode_cpu_req=1 # at least 1 core for each rpcnode
 
@@ -38,7 +38,7 @@ function log_err() {
 }
 
 is_ports_valid() {
-  local ports=$(yq eval '.buckets[].port' $config_path | xargs)
+  local ports=$(yq eval '.miners[].port' $config_path | xargs)
   for port in $ports; do
     check_port $port
   done
@@ -103,7 +103,7 @@ get_distro_name() {
     DISTRO='Raspbian'
     PM='apt'
   else
-    log_err 'unsupport linux distro'
+    log_err 'Linux distro unsupported'
     return 1
   fi
   return 0
@@ -174,15 +174,10 @@ join_by() {
   printf '%s\n' "$@" | paste -sd "$d"
 }
 
-get_cpu_core_number() {
-  local processors=$(grep -c ^processor /proc/cpuinfo)
-  echo $processors # echo can run num > 255
-}
-
-get_buckets_num() {
-  # get bucket num by port's num
-  local bucket_port_str=$(yq eval '.buckets[].port' $config_path | xargs)
-  read -a ports_arr <<<"$bucket_port_str"
+get_miners_num() {
+  # get miners num by port's num
+  local miner_port_str=$(yq eval '.miners[].port' $config_path | xargs)
+  read -a ports_arr <<<"$miner_port_str"
   echo ${#ports_arr[@]}
 }
 
@@ -190,7 +185,7 @@ is_cfgfile_valid() {
   log_info "Read configuration from Path: $config_path"
 
   if [ ! -f "$config_path" ]; then
-    log_err "Error: ConfigFileNotFoundException, config.yaml not found in $config_path"
+    log_err "ConfigFileNotFoundException: $config_path do not exist"
     exit 1
   fi
 
@@ -202,16 +197,16 @@ is_cfgfile_valid() {
 }
 
 is_kernel_satisfied() {
-  local kernal_version=$(uname -r | cut -d . -f 1,2)
-  log_info "Linux kernel version: $kernal_version"
-  if ! is_ver_a_ge_b $kernal_version $kernel_ver_req; then
-    log_err "The kernel version must be greater than 5.11, current version is $kernal_version. Please upgrade the kernel at first."
+  local kernel_version=$(uname -r | cut -d . -f 1,2)
+  log_info "Linux kernel version: $kernel_version"
+  if ! is_ver_a_ge_b "$kernel_version" $kernel_ver_req; then
+    log_err "The kernel version must be greater than 5.11, current version is $kernel_version. Please upgrade the kernel at first."
     exit 1
   fi
 }
 
 is_base_hardware_satisfied() {
-  local cur_processors=$(get_cur_processorss)
+  local cur_processors=$(get_cur_processors)
   local cur_ram=$(get_cur_ram)
   if [ "$cur_processors" -lt $cpu_req ]; then
     log_err "Cpu processor must greater than $cpu_req"
@@ -226,53 +221,53 @@ is_base_hardware_satisfied() {
 }
 
 is_processors_satisfied() {
-  local bucket_num=$(get_buckets_num)
-  local basic_buckets_cpu_need=$(($bucket_num * $each_bucket_cpu_req))
+  local miner_num=$(get_miners_num)
+  local basic_miners_cpu_need=$(($miner_num * $each_miner_cpu_req))
   local basic_rpcnode_cpu_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_cpu_req" || echo "0")
-  local buckets_cpu_req_in_cfg=$(yq eval '.buckets[].UseCpu' $config_path | xargs | awk '{ sum = 0; for (i = 1; i <= NF; i++) sum += $i; print sum }')
-  local basic_cpu_req=$([ $skip_chain == "false" ] && echo $(($basic_buckets_cpu_need + $basic_rpcnode_cpu_need)) || echo $basic_buckets_cpu_need)
-  local actual_cpu_req=$([ $skip_chain == "false" ] && echo $(($buckets_cpu_req_in_cfg + $basic_rpcnode_cpu_need)) || echo $basic_buckets_cpu_need)
+  local miners_cpu_req_in_cfg=$(yq eval '.miners[].UseCpu' $config_path | xargs | awk '{ sum = 0; for (i = 1; i <= NF; i++) sum += $i; print sum }')
+  local basic_cpu_req=$([ $skip_chain == "false" ] && echo $(($basic_miners_cpu_need + $basic_rpcnode_cpu_need)) || echo $basic_miners_cpu_need)
+  local actual_cpu_req=$([ $skip_chain == "false" ] && echo $(($miners_cpu_req_in_cfg + $basic_rpcnode_cpu_need)) || echo $basic_miners_cpu_need)
 
-  local cur_processors=$(get_cur_processorss)
+  local cur_processors=$(get_cur_processors)
 
   if [ $basic_cpu_req -gt $cur_processors ]; then
-    log_info "Each bucket request $each_bucket_cpu_req processors at least, each chain request $each_rpcnode_cpu_req processors at least"
+    log_info "Each miner request $each_miner_cpu_req processors at least, each chain request $each_rpcnode_cpu_req processors at least"
     log_info "Basic installation request: $basic_cpu_req processors in total, but $cur_processors in current"
     log_info "Run too much storage node might make your server overload"
-    log_err "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
+    log_err "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
     exit 1
   fi
 
   if [ $actual_cpu_req -gt $cur_processors ]; then
     log_info "Totally request: $actual_cpu_req processors in $config_path, but $cur_processors in current"
-    log_err "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
+    log_err "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
     exit 1
   fi
 }
 
 is_ram_satisfied() {
-  local bucket_num=$(get_buckets_num)
+  local miner_num=$(get_miners_num)
 
-  local base_buckets_ram_need=$(($bucket_num * $each_bucket_ram_req))
+  local basic_miners_ram_need=$(($miner_num * $each_miner_ram_req))
 
-  local base_rpcnode_ram_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_ram_req" || echo "0")
+  local basic_rpcnode_ram_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_ram_req" || echo "0")
 
-  local total_ram_req=$([ $skip_chain == "false" ] && echo $(($base_buckets_ram_need + $base_rpcnode_ram_need)) || echo $base_buckets_ram_need)
+  local total_ram_req=$([ $skip_chain == "false" ] && echo $(($basic_miners_ram_need + $basic_rpcnode_ram_need)) || echo $basic_miners_ram_need)
 
   local cur_ram=$(get_cur_ram)
 
   if [ $total_ram_req -gt $cur_ram ]; then
-    log_info "Each bucket request $each_bucket_ram_req GB ram at least, each chain request $each_rpcnode_ram_req GB ram at least"
+    log_info "Each miner request $each_miner_ram_req GB ram at least, each chain request $each_rpcnode_ram_req GB ram at least"
     log_info "Installation request: $total_ram_req GB in total, but $cur_ram GB in current"
     log_info "Run too much storage node might make your server overload"
-    log_err "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
+    log_err "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
     exit 1
   fi
 }
 
 is_disk_satisfied() {
-  local diskPath=$(yq eval '(.buckets | unique_by(.diskPath)) | .[].diskPath' $config_path)
-  local useSpace=$(yq eval '(.buckets[].UseSpace' $config_path)
+  local diskPath=$(yq eval '(.miners | unique_by(.diskPath)) | .[].diskPath' $config_path)
+  local useSpace=$(yq eval '(.miners[].UseSpace' $config_path)
 
   readarray -t diskPath_arr <<<"$diskPath"
   readarray -t useSpace_arr <<<"$useSpace"
@@ -297,14 +292,14 @@ is_disk_satisfied() {
   if [ "$result" -eq 1 ]; then
     log_info "Only $total_avail GB available in $(echo "$diskPath" | tr "\n" " "), but set $total_req GB UseSpace in total in: $config_path"
     log_info "This configuration can make your storage nodes be frozen after running"
-    log_info "Please modify configuration in $config_path and execute: [ sudo cess-multibucket-admin config generate ] again"
+    log_info "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
     exit 1
   fi
 }
 
 is_workpaths_valid() {
-  local disk_path=$(yq eval '.buckets[].diskPath' $config_path | xargs)
-  local each_space=$(yq eval '.buckets[].UseSpace' $config_path | xargs)
+  local disk_path=$(yq eval '.miners[].diskPath' $config_path | xargs)
+  local each_space=$(yq eval '.miners[].UseSpace' $config_path | xargs)
   read -a path_arr <<<"$disk_path"
   read -a space_arr <<<"$each_space"
   for i in "${!path_arr[@]}"; do
@@ -350,7 +345,7 @@ add_docker_centos_repo() {
 
 get_cur_ram() {
   local cur_ram=0
-  local ram_unit=$(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $3}' | egrep "GB|MB" | head -n 1)
+  local ram_unit=$(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $3}' | grep -E "GB|MB" | head -n 1)
   if [ "$ram_unit" == "MB" ]; then
     for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}'); do cur_ram=$((cur_ram + $num / 1000)); done
   elif [ "$ram_unit" == "GB" ]; then
@@ -361,30 +356,30 @@ get_cur_ram() {
   echo $cur_ram # echo can return num > 255
 }
 
-get_cur_processorss() {
+get_cur_processors() {
   local processors=$(grep -c ^processor /proc/cpuinfo)
   echo $processors # echo can return num > 255
 }
 
 mk_workdir() {
-  local disk_paths=$(yq eval '.buckets[].diskPath' $config_path | xargs)
+  local disk_paths=$(yq eval '.miners[].diskPath' $config_path | xargs)
   for disk_path in $disk_paths; do
-    sudo mkdir -p "$disk_path/bucket" "$disk_path/storage"
+    sudo mkdir -p "$disk_path/miner" "$disk_path/storage"
   done
 }
 
-split_buckets_config() {
-  local buckets_num=$(get_buckets_num)
-  for ((i = 0; i < buckets_num; i++)); do
-    local get_bucket_config_by_index="yq eval '.[$i]' $build_dir/buckets/config.yaml"
-    local get_disk_path_by_index="yq eval '.buckets[$i].diskPath' $config_path"
-    local each_path="$(eval "$get_disk_path_by_index")/bucket/config.yaml"
-    eval $get_bucket_config_by_index >$each_path
+split_miners_config() {
+  local miners_num=$(get_miners_num)
+  for ((i = 0; i < miners_num; i++)); do
+    local get_miner_config_by_index="yq eval '.[$i]' $build_dir/miners/config.yaml"
+    local get_disk_path_by_index="yq eval '.miners[$i].diskPath' $config_path"
+    local each_path="$(eval "$get_disk_path_by_index")/miner/config.yaml"
+    eval $get_miner_config_by_index >$each_path
     if [ $? -ne 0 ]; then
       log_err "Fail to generate file: $each_path"
       exit 1
     else
-      log_success "bucket_$i configuration generated at: $each_path"
+      log_success "miner$i configuration generated at: $each_path"
     fi
   done
 }

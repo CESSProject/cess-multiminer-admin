@@ -10,7 +10,7 @@ retain_config="false"
 no_rmi=0
 keep_running=0
 local_script_dir=$local_base_dir/scripts
-install_dir="/opt/cess/multibucket-admin"
+install_dir="/opt/cess/mineradm"
 source $local_script_dir/utils.sh
 
 help() {
@@ -18,7 +18,7 @@ help() {
 Usage:
     -h | --help                show help information
     -n | --no-rmi              do not remove the corresponding image when uninstalling the service
-    -r | --retain-config       retain old config when update cess-multibucket-admin
+    -r | --retain-config       retain old config when update mineradm
     -s | --skip-dep            skip install the dependencies
     -k | --keep-running        do not docker compose down all services if there have previous cess services
 EOF
@@ -130,24 +130,24 @@ install_dependencies() {
   sysctl -w net.core.rmem_max=2500000
 }
 
-install_multi_buckets_admin() {
-  local dst_bin=/usr/bin/cess-multibucket-admin
-  local dst_config=$install_dir/config.yaml           # /opt/cess/multibucket-admin/config.yaml
-  local dst_utils_sh=$install_dir/scripts/utils.sh    #/opt/cess/multibucket-admin/scripts/utils.sh
+install_mineradm() {
+  local dst_bin=/usr/bin/mineradm
+  local dst_config=$install_dir/config.yaml           # /opt/cess/mineradm/config.yaml
+  local dst_utils_sh=$install_dir/scripts/utils.sh    #/opt/cess/mineradm/scripts/utils.sh
   local src_utils_sh=$local_base_dir/scripts/utils.sh #/$pwd/scripts/utils.sh
   local old_version=""
   local new_version=""
   if [ -f "$dst_utils_sh" ]; then
-    old_version=$(cat $dst_utils_sh | grep multibucket_admin_version | awk -F = '{gsub(/"/,"");print $2}')
+    old_version=$(cat $dst_utils_sh | grep mineradm_version | awk -F = '{gsub(/"/,"");print $2}')
   fi
   if [ -f "$src_utils_sh" ]; then
-    new_version=$(cat $src_utils_sh | grep multibucket_admin_version | awk -F = '{gsub(/"/,"");print $2}')
+    new_version=$(cat $src_utils_sh | grep mineradm_version | awk -F = '{gsub(/"/,"");print $2}')
   fi
 
-  echo "Begin install cess multibucket admin: $new_version"
+  echo "Begin install cess mineradm: $new_version"
 
   if [ -f "$dst_config" ] && [ x"$retain_config" != x"true" ]; then
-    log_info "WARNING: It is detected that you may have previously installed cess multibucket admin: $old_version"
+    log_info "WARNING: It is detected that you may have previously installed cess mineradm: $old_version"
     log_info "         and that a new installation will overwrite the original configuration."
     log_info "         Request to make sure you have backed up the relevant important configuration data."
     printf "Press \033[0;33mY\033[0m to continue: "
@@ -165,7 +165,7 @@ install_multi_buckets_admin() {
   fi
 
   if [ -f "$install_dir/scripts/uninstall.sh" ]; then
-    echo "Uninstall old cess multibucket admin: $old_version"
+    echo "Uninstall old cess mineradm: $old_version"
     local opt=
     local keep=
     if [[ $no_rmi -eq 1 ]]; then
@@ -183,17 +183,17 @@ install_multi_buckets_admin() {
 
   if [ -f $old_config ]; then
     mv $old_config $install_dir
-    log_info "Save old config in /opt/cess/multibucket-admin: .old_config.yaml"
+    log_info "Save old config in /opt/cess/mineradm: .old_config.yaml"
   fi
   chown root:root $install_dir/config.yaml
   chmod 0600 $install_dir/config.yaml
 
   cp -r $local_base_dir/scripts $install_dir/
 
-  cp $local_script_dir/cess_multibucket.sh $dst_bin
+  cp $local_script_dir/miners.sh $dst_bin
   chmod +x $dst_bin
 
-  log_success "Install cess multibucket admin success"
+  log_success "Install cess mineradm success"
 }
 
 while true; do
@@ -244,4 +244,4 @@ if ! is_base_hardware_satisfied; then
 fi
 
 install_dependencies
-install_multi_buckets_admin
+install_mineradm

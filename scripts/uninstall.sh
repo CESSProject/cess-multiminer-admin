@@ -14,9 +14,9 @@ case "$2" in
     ;;
 esac
 
-install_dir=/opt/cess/multibucket-admin
+install_dir=/opt/cess/mineradm
 compose_yaml=$install_dir/build/docker-compose.yaml
-bin_file=/usr/bin/cess-multibucket-admin
+bin_file=/usr/bin/mineradm
 
 if [ $(id -u) -ne 0 ]; then
     echo "Please run with sudo!"
@@ -33,7 +33,7 @@ if [[ -f "$compose_yaml" ]] && [[ $keep_running -eq 0 ]]; then
 fi
 
 if [ -f "$bin_file" ]; then
-    rm /usr/bin/cess-multibucket-admin
+    rm /usr/bin/mineradm
 fi
 
 rm -rf $install_dir

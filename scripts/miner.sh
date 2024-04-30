@@ -1,9 +1,9 @@
 #!/bin/bash
 
-source /opt/cess/multibucket-admin/scripts/utils.sh
-source /opt/cess/multibucket-admin/scripts/version.sh
-source /opt/cess/multibucket-admin/scripts/config.sh
-source /opt/cess/multibucket-admin/scripts/tools.sh
+source /opt/cess/mineradm/scripts/utils.sh
+source /opt/cess/mineradm/scripts/version.sh
+source /opt/cess/mineradm/scripts/config.sh
+source /opt/cess/mineradm/scripts/tools.sh
 
 ########################################base################################################
 
@@ -33,7 +33,7 @@ install() {
     if [ "$(yq eval '.services | has("chain")' $compose_yaml)" == 'true' ]; then
       yq eval 'del(.services.chain)' -i $compose_yaml
       log_info "Chain configuration has deleted in: $compose_yaml"
-      log_info "Execute [ sudo cess-multibucket-admin config generate ] to restore"
+      log_info "Execute [ sudo mineradm config generate ] to restore"
     fi
   else
     local services=$(yq eval '.services | keys | join(" ")' $compose_yaml)
@@ -46,7 +46,7 @@ install() {
 
 stop() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
+    log_err "docker-compose.yaml not found in /opt/cess/mineradm/build"
     exit 1
   fi
   if [ x"$1" = x"" ]; then
@@ -62,7 +62,7 @@ stop() {
 
 restart() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "docker-compose.yaml is not found in /opt/cess/multibucket-admin/build"
+    log_err "docker-compose.yaml is not found in /opt/cess/mineradm/build"
     exit 1
   fi
 
@@ -85,7 +85,7 @@ restart() {
 
 down() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
+    log_err "docker-compose.yaml not found in /opt/cess/mineradm/build"
     exit 1
   fi
 
@@ -108,11 +108,11 @@ pullimg() {
 }
 
 status() {
-  docker ps -a --filter "label=com.docker.compose.project=cess-multibucket" --format 'table {{.Names}}\t{{.Status}}' | sort
+  docker ps -a --filter "label=com.docker.compose.project=cess-${mode}" --format 'table {{.Names}}\t{{.Status}}' | sort
 }
 
 purge() {
-  log_info "WARNING: this operation can remove all your data in /opt/cess/multibucket/* and can't revert."
+  log_info "WARNING: this operation can remove all your data in /opt/cess/miners/* and can't revert."
   log_info "         Make sure you understand you do!"
   printf "Press \033[0;33mY\033[0m if you really want to do: "
   local y=""
@@ -123,8 +123,8 @@ purge() {
   fi
 
   if [ x"$1" = x"" ]; then
-    if [ x"$mode" == x"multibucket" ]; then
-      purge_bucket
+    if [ x"$mode" == x"miners" ]; then
+      purge_miner
       purge_chain
     fi
     return $?
@@ -133,8 +133,8 @@ purge() {
     purge_chain
     return $?
   fi
-  if [ x"$1" = x"bucket" ]; then
-    purge_bucket
+  if [ x"$1" = x"miner" ]; then
+    purge_miner
     return $?
   fi
   help
@@ -143,23 +143,23 @@ purge() {
 
 purge_chain() {
   stop chain
-  rm -rf /opt/cess/$mode/chain/*
+  rm -rf /opt/cess/data/$mode/chain/*
   if [ $? -eq 0 ]; then
     log_success "purge chain data successfully"
   fi
 }
 
-purge_bucket() {
-  stop bucket
-  rm -rf /opt/cess/$mode/bucket/*
+purge_miner() {
+  stop
+  rm -rf /opt/cess/data/$mode/miners/*
   if [ $? -eq 0 ]; then
-    log_success "purge bucket data successfully"
+    log_success "purge miner data successfully"
   fi
 }
 
-bucket_ops() {
+miner_ops() {
   if [ ! -f "$compose_yaml" ]; then
-    log_err "docker-compose.yaml not found in /opt/cess/multibucket-admin/build"
+    log_err "docker-compose.yaml not found in /opt/cess/mineradm/build"
     return 1
   fi
 
@@ -171,7 +171,7 @@ bucket_ops() {
   case "$1" in
   increase)
     if [ $# -eq 3 ]; then
-      log_info "WARNING: This operation will increase all of your buckets stake"
+      log_info "WARNING: This operation will increase all of your miners stake"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -182,7 +182,8 @@ bucket_ops() {
     ;;
   exit)
     if [ $# -eq 1 ]; then
-      log_info "WARNING: This operation will make all of your buckets exit from cess network"
+      log_info "I am sure that I have staked for more than 180 days"
+      log_info "WARNING: This operation will make all of your miners exit from cess network"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -194,21 +195,21 @@ bucket_ops() {
   *) ;;
   esac
 
-  local bucket_names=$(yq eval '.services | keys | map(select(. == "'bucket'*" )) | join(" ")' $compose_yaml)
-  local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^bucket_.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
+  local miner_names=$(yq eval '.services | keys | map(select(. == "'miner'*" )) | join(" ")' $compose_yaml)
+  local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^miner.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
   readarray -t volumes_array <<<"$volumes" # read array split with /n
-  read -a names_array <<<"$bucket_names"   # read array split with " "
-  local bucket_image="cesslab/cess-bucket:$profile"
-  local -r cfg_arg=" -c /opt/bucket/config.yaml"
+  read -a names_array <<<"$miner_names"    # read array split with " "
+  local miner_image="cesslab/cess-miner:$profile"
+  local -r cfg_arg="-c /opt/miner/config.yaml"
 
   for i in "${!volumes_array[@]}"; do
-    local cmd="docker run --rm --network=host ${volumes_array[$i]} $bucket_image"
+    local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
     case "$1" in
     increase)
-      # sudo cess-multibucket-admin buckets increase staking <bucket name> <deposit amount>
+      # sudo mineradm miners increase staking <miner name> <deposit amount>
       if [ $# -eq 4 ]; then
-        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
+        local miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
+        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
         res=$($cmd $1 $2 $4 $cfg_arg)
         log_info "$res"
         if [ $? -ne 0 ]; then
@@ -218,23 +219,22 @@ bucket_ops() {
           if echo "$res" | grep -q "!"; then
             log_err "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
             log_err "$3: Increase Operation Failed"
+            exit 1
           else
             log_success "$3: Increase Operation Success"
+            exit 0
           fi
-          exit 0
         fi
-      # sudo cess-multibucket-admin buckets increase staking <deposit amount>
+      # sudo mineradm miners increase staking <deposit amount>
       elif [ $# -eq 3 ]; then
         res=$($cmd $1 $2 $3 $cfg_arg)
         log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Increase Operation Failed"
-          exit 1
         else
           if echo "$res" | grep -q "!"; then
-            log_err "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
+            log_info "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
             log_err "${names_array[$i]}: Increase Operation Failed"
-            exit 1
           else
             log_info "${names_array[$i]}: Increase Operation Success"
           fi
@@ -245,18 +245,10 @@ bucket_ops() {
       fi
       ;;
     exit)
-      log_info "I am sure that I have staked for more than 180 days"
-      printf "Press \033[0;33mY\033[0m to continue: "
-      local y=""
-      read y
-      if [ x"$y" != x"Y" ]; then
-        echo "Cancel Exit Operation"
-        return 1
-      fi
-      # sudo cess-multibucket-admin buckets exit <bucket name>
+      # sudo mineradm miners exit <miner name>
       if [ $# -eq 2 ]; then
-        local bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
+        local miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
+        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
         res=$($cmd $1 $cfg_arg)
         log_info "$res"
         if [ $? -ne 0 ]; then
@@ -269,25 +261,22 @@ bucket_ops() {
             exit 1
           else
             log_info "$2: Exit Operation Success"
+            exit 0
           fi
-          exit 0
         fi
-      # sudo cess-multibucket-admin buckets exit
+      # sudo mineradm miners exit
       elif [ $# -eq 1 ]; then
         res=$($cmd $1 $cfg_arg)
         log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Exit Operation Failed"
-          exit 1
         else
           if echo "$res" | grep -q "!"; then
-            log_err "Stake less than 180 days or network issue"
+            log_info "Stake less than 180 days or network issue"
             log_err "${names_array[$i]}: Exit Operation Failed"
-            exit 1
           else
             log_info "${names_array[$i]}: Exit Operation Success"
           fi
-          exit 0
         fi
       else
         log_err "Args Error"
@@ -295,10 +284,10 @@ bucket_ops() {
       fi
       ;;
     withdraw)
-      # sudo cess-multibucket-admin buckets withdraw <bucket name>
+      # sudo mineradm miners withdraw <miner name>
       if [ $# -eq 2 ]; then
-        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
+        miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
+        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
         res=$($cmd $1 $cfg_arg)
         log_info "$res"
         if [ $? -ne 0 ]; then
@@ -306,26 +295,24 @@ bucket_ops() {
           exit 1
         else
           if echo "$res" | grep -q "!"; then
-            log_err "Please make sure you have staked for more than 180 days and the storage node have exit the cess network"
+            log_info "Please make sure the miner have staked for more than 180 days and the miner have exit the cess network"
             log_err "$2: Withdraw Operation Failed"
             exit 1
           else
             log_info "$2: Withdraw Operation Success"
+            exit 0
           fi
-          exit 0
         fi
-      # sudo cess-multibucket-admin buckets withdraw
+      # sudo mineradm miners withdraw
       elif [ $# -eq 1 ]; then
         res=$($cmd $1 $cfg_arg)
         log_info "$res"
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Withdraw Operation Failed"
-          exit 1
         else
           if echo "$res" | grep -q "!"; then
-            log_err "Please make sure you have staked for more than 180 days and the storage node have exit the cess network"
+            log_info "Please make sure the miner have staked for more than 180 days and the miner have exit the cess network"
             log_err "${names_array[$i]}: Withdraw Operation Failed"
-            exit 1
           else
             log_info "${names_array[$i]}: Withdraw Operation Success"
           fi
@@ -335,7 +322,7 @@ bucket_ops() {
         exit 1
       fi
       ;;
-    # sudo cess-multibucket-admin buckets stat
+    # sudo mineradm miners status
     stat)
       $cmd $1 $cfg_arg
       if [ $? -ne 0 ]; then
@@ -344,7 +331,7 @@ bucket_ops() {
         log_info "${names_array[$i]}: Query Status Success"
       fi
       ;;
-    # sudo cess-multibucket-admin buckets reward
+    # sudo mineradm miners reward
     reward)
       $cmd $1 $cfg_arg
       if [ $? -ne 0 ]; then
@@ -355,10 +342,10 @@ bucket_ops() {
       fi
       ;;
     claim)
-      # sudo cess-multibucket-admin buckets claim <bucket name>
+      # sudo mineradm miners claim <miner name>
       if [ $# -eq 2 ]; then
-        bucket_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $bucket_i_volumes $bucket_image"
+        miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
+        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
         $cmd $1 $cfg_arg
         if [ $? -ne 0 ]; then
           log_err "$2: Claim Operation Failed"
@@ -367,12 +354,11 @@ bucket_ops() {
           log_info "$2: Claim Operation Success"
           exit 0
         fi
-      # sudo cess-multibucket-admin buckets claim
+      # sudo mineradm miners claim
       elif [ $# -eq 1 ]; then
         $cmd $1 $cfg_arg
         if [ $? -ne 0 ]; then
           log_err "${names_array[$i]}: Claim Operation Failed"
-          exit 1
         else
           log_info "${names_array[$i]}: Claim Operation Success"
         fi
@@ -382,7 +368,7 @@ bucket_ops() {
       fi
       ;;
     update)
-      # sudo cess-multibucket-admin buckets update earnings <earnings account>
+      # sudo mineradm miners update earnings <earnings account>
       if [ "$2" == "earnings" ]; then
         $cmd $1 $2 $3 $cfg_arg
         if [ $? -ne 0 ]; then
@@ -393,12 +379,12 @@ bucket_ops() {
           exit 0
         fi
       else
-        bucket_ops_help
+        miner_ops_help
         exit 0
       fi
       ;;
     *)
-      bucket_ops_help
+      miner_ops_help
       exit 0
       ;;
     esac
@@ -406,9 +392,9 @@ bucket_ops() {
   done
 }
 
-bucket_ops_help() {
+miner_ops_help() {
   cat <<EOF
-cess buckets usage:
+cess miners usage:
     increase [amount]                   Increase the stakes of storage miner
     exit                                Unregister the storage miner role
     withdraw                            Withdraw stakes
@@ -429,12 +415,12 @@ Usage:
     install                                     run all services
        option:
            -s, --skip-chain                     do not install chain if you do not run a chain at localhost
-    buckets                                     buckets operations
+    miners                                     miners operations
        option:
            increase [amount]                    Increase the stakes of storage miner
            exit                                 Unregister the storage miner role
            withdraw                             Withdraw stakes
-           stat                                 Query storage miner information
+           stat                                 Query storage miners stat
            reward                               Query reward information
            claim                                Claim reward
            update earnings [wallet account]     Update earnings account
@@ -442,39 +428,39 @@ Usage:
        option:
            chain                                stop chain at localhost
            watchtower                           stop watchtower at localhost
-           bucket_$i                            stop a specific storage node at localhost
+           miner_$i                            stop a specific storage node at localhost
     restart                                     restart all or one cess service
        option:
            chain                                restart chain at localhost
            watchtower                           restart watchtower at localhost
-           bucket_$i                            restart a specific storage node at localhost
+           miner_$i                            restart a specific storage node at localhost
     down                                        down all or one cess service
        option:
            chain                                down chain at localhost
            watchtower                           down watchtower at localhost
-           bucket_$i                            down a specific storage node at localhost
+           miner_$i                            down a specific storage node at localhost
     status                                      check service status
     pullimg                                     update all service images
-    purge {chain|bucket}                        remove datas regarding program, WARNING: this operate can't revert, make sure you understand you do
+    purge {chain|miner}                        remove datas regarding program, WARNING: this operate can't revert, make sure you understand you do
     config                                      configuration operations
        option:
            -s | show                            show configurations
-           -g | generate                        generate configuration by default file: /opt/cess/multibucket-admin/config.yaml
+           -g | generate                        generate configuration by default file: /opt/cess/mineradm/config.yaml
            -p | pull-image                      download corresponding images after set config
     profile {devnet|testnet|mainnet}            switch CESS network profile, testnet for default
-    tools                                       use 'cess-multibucket-admin tools help' for more details
+    tools                                       use 'mineradm tools help' for more details
        option:
            rotate-keys                          generate session key of chain node
-           space-info                           show information about bucket disk
+           space-info                           show information about miner disk
 EOF
 }
 
 load_profile
 
 case "$1" in
-buckets)
+miners)
   shift
-  bucket_ops $@
+  miner_ops $@
   ;;
 -v | version)
   version

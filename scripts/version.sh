@@ -1,11 +1,11 @@
 #!/bin/bash
 
-source /opt/cess/multibucket-admin/scripts/utils.sh
+source /opt/cess//scripts/utils.sh
 
 version() {
   printf "Node mode: ${mode}\n"
   printf "Profile: ${profile}\n"
-  printf "multibucket admin version: ${multibucket_admin_version}\n"
+  printf " version: ${_version}\n"
   inner_docker_version
 
   if [[ -f $config_path ]]; then
@@ -21,8 +21,8 @@ inner_docker_version() {
   printf "  image              version                            image hash\n"
   show_version "config-gen" "cesslab/config-gen" "version"
   show_version "chain" "cesslab/cess-chain" "--version"
-  if [ x"$mode" == x"multibucket" ]; then
-    show_version "bucket" "cesslab/cess-bucket" "version"
+  if [ x"$mode" == x"miners" ]; then
+    show_version "miner" "cesslab/cess-miner" "version"
   fi
 }
 
@@ -39,7 +39,7 @@ show_version() {
     printf "  $prog_name         ${version}                   ${image_hash}\n"
   elif [[ $prog_name == "chain" ]]; then
     printf "  $prog_name              ${version}        ${image_hash}\n"
-  elif [[ $prog_name == "bucket" ]]; then
+  elif [[ $prog_name == "miner" ]]; then
     printf "  $prog_name             ${version}                     ${image_hash}\n"
   fi
 }

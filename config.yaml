@@ -1,16 +1,16 @@
 ## node configurations template
 node:
-  mode: "multibucket"
+  mode: "miners"
   ## the profile of node: devnet/testnet/mainnet
   profile: "testnet"
-  # default chain url for bucket, can be overwritten in buckets[] as below
+  # default chain url for miner, can be overwritten in miners[] as below
   chainWsUrl: "ws://127.0.0.1:9944/"
-  # default backup chain urls for bucket, can be overwritten in buckets[] as below
+  # default backup chain urls for miner, can be overwritten in miners[] as below
   backupChainWsUrls: ["wss://testnet-rpc0.cess.cloud/ws/", "wss://testnet-rpc1.cess.cloud/ws/", "wss://testnet-rpc2.cess.cloud/ws/", "wss://testnet-rpc3.cess.cloud/ws/"]
 
 ## chain configurations
-## set option: '--skip-chain' or '-s' to skip installing chain (cess-multibucket-admin install --skip-chain)
-## if set option: --skip-chain, please set official chain in bucket[].chainWsUrl or others chain you know
+## set option: '--skip-chain' or '-s' to skip installing chain (mineradm install --skip-chain)
+## if set option: --skip-chain, please set official chain in miner[].chainWsUrl or others chain you know
 chain:
   ## the name of chain node
   name: "cess"
@@ -19,9 +19,9 @@ chain:
   ## listen rpc service at port 9944
   rpcPort: 9944
 
-## bucket configurations  (multi storage miner mode)
-buckets:
-  - name: "bucket_1"
+## miners configurations  (multi miners mode)
+miners:
+  - name: "miner1"
     # P2P communication port, each port must be different
     port: 15001
     # Maximum space used, the unit is GiB
@@ -35,9 +35,9 @@ buckets:
     # otherwise the staking will be paid by the earningsAcc.
     stakingAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     # Signature account mnemonic
-    # each bucket's mnemonic should be different
+    # each miner's mnemonic should be different
     mnemonic: "aaaaa bbbbb ccccc ddddd eeeee fffff ggggg hhhhh iiiii jjjjj kkkkk lllll"
-    # bucket work at this path
+    # miner work at this path
     diskPath: "/mnt/cess_storage1"
     # The rpc endpoint of the chain
     # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/` wss://testnet-rpc3.cess.cloud/ws/`
@@ -47,7 +47,7 @@ buckets:
     # Bootstrap Nodes
     Boot: "_dnsaddr.boot-bucket-testnet.cess.cloud"
 
-  - name: "bucket_2"
+  - name: "miner2"
     # P2P communication port, each port must be different
     port: 15002
     # Maximum space used, the unit is GiB
@@ -61,9 +61,9 @@ buckets:
     # otherwise the staking will be paid by the earningsAcc.
     stakingAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     # Signature account mnemonic
-    # each bucket's mnemonic should be different
+    # each miner's mnemonic should be different
     mnemonic: "lllll kkkkk jjjjj iiiii hhhhh ggggg fffff eeeee ddddd ccccc bbbbb aaaaa"
-    # bucket work at this path
+    # miner work at this path
     diskPath: "/mnt/cess_storage2"
     # The rpc endpoint of the chain
     # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/` wss://testnet-rpc3.cess.cloud/ws/`

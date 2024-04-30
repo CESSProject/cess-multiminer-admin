@@ -1,11 +1,11 @@
 #!/bin/bash
 
-source /opt/cess/multibucket-admin/scripts/utils.sh
+source /opt/cess/mineradm/scripts/utils.sh
 
 mode=$(yq eval ".node.mode" $config_path)
-if [ x"$mode" != x"multibucket" ]; then
-  log_info "The mode in $config_path is invalid, set value to: multibucket"
-  yq -i eval ".node.mode=\"multibucket\"" $config_path
+if [ x"$mode" != x"miners" ]; then
+  log_info "The mode in $config_path is invalid, set value to: miners"
+  yq -i eval ".node.mode=\"miners\"" $config_path
   mode=$(yq eval ".node.mode" $config_path)
 fi
 
@@ -19,7 +19,7 @@ EOF
 }
 
 config_show() {
-  local keys=('"node"' '"buckets"')
+  local keys=('"node"' '"miners"')
   local use_external_chain=$(yq eval ".node.externalChain //0" $config_path)
   if [[ $use_external_chain -eq 0 ]]; then
     keys+=('"chain"')
@@ -28,18 +28,18 @@ config_show() {
   yq eval ". |= pick([$ss])" $config_path -o json
 }
 
-# generate each bucket config.yaml and docker-compose.yaml
+# generate each miner config.yaml and docker-compose.yaml
 config_generate() {
   is_cfgfile_valid
 
-  # if user just wanna upgrade multibucket-admin and do not want to stop bucket, skip check port
-  if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-bucket'; then
+  # if user just wanna upgrade mineradm and do not want to stop miners, skip check port
+  if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-miner'; then
     is_ports_valid
   fi
 
   is_workpaths_valid
 
-  log_info "Start generate buckets configurations and docker-compose file"
+  log_info "Start generate miners configurations and docker-compose file"
 
   rm -rf $build_dir
   mkdir -p $build_dir/.tmp
@@ -69,14 +69,14 @@ config_generate() {
   yq eval '.' $build_dir/docker-compose.yaml | grep -n "test: " | awk '{print $1}' | cut -d':' -f1 | xargs -I {} sed -i "{}s/'//;{}s/\(.*\)'/\1/" $build_dir/docker-compose.yaml
 
   rm -rf $build_dir/.tmp
-  local base_mode_path=/opt/cess/$mode
+  local base_mode_path=/opt/cess/data/$mode
 
-  if [[ "$mode" == "multibucket" ]]; then
-    if [ ! -d $base_mode_path/buckets/ ]; then
-      log_info "mkdir : $base_mode_path/buckets/"
-      mkdir -p $base_mode_path/buckets/
+  if [[ "$mode" == "miners" ]]; then
+    if [ ! -d $base_mode_path/miners/ ]; then
+      log_info "mkdir : $base_mode_path/miners/"
+      mkdir -p $base_mode_path/miners/
     fi
-    cp $build_dir/buckets/* $base_mode_path/buckets/
+    cp $build_dir/miners/* $base_mode_path/miners/
 
     if [ ! -d $base_mode_path/chain/ ]; then
       log_info "mkdir : $base_mode_path/chain/"
@@ -91,7 +91,7 @@ config_generate() {
   #chmod -R 0600 $build_dir
   #chmod 0600 $config_path
 
-  split_buckets_config
+  split_miners_config
 
   log_success "docker-compose.yaml generated at: $build_dir"
 }
