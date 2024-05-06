@@ -1,17 +1,17 @@
-# Cess Multibucket Admin
-multi-buckets container installation
+# Cess Multi-Miner Admin
+cess multi-miner installation
 
 # Usage
 ```
-$ wget https://github.com/CESSProject/cess-multibucket-admin/archive/latest.tar.gz
+$ wget https://github.com/CESSProject/cess-multiminer-admin/archive/latest.tar.gz
 $ sudo tar -xvf latest.tar.gz
-$ cd cess-multibucket-admin-latest
+$ cd cess-multiminer-admin-latest
 $ sudo bash ./install.sh
-Set your custom configuration in /opt/cess/multibucket-admin/config.yaml
-$ sudo cess-multibucket-admin config generate
-$ sudo cess-multibucket-admin install 
+Customize your configuration in /opt/cess/mineradm/config.yaml
+$ sudo mineradm config generate
+$ sudo mineradm install
 ```
 
 # Docs
 
-- Docs: https://docs.cess.cloud/core/storage-miner/multi-buckets
+- Docs: https://docs.cess.cloud/core/storage-miner/multi-miner
