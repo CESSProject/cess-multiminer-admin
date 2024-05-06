@@ -190,6 +190,17 @@ miner_ops() {
       fi
     fi
     ;;
+  update)
+    if [ $# -eq 3 ]; then
+      log_info "WARNING: This operation will update all of your miner's earningsAcc"
+      printf "Press \033[0;33mY\033[0m to continue: "
+      local y=""
+      read y
+      if [ x"$y" != x"Y" ]; then
+        exit 1
+      fi
+    fi
+    ;;
   *) ;;
   esac
 
@@ -366,19 +377,40 @@ miner_ops() {
       fi
       ;;
     update)
-      # sudo mineradm miners update earnings <earnings account>
-      if [ "$2" == "earnings" ]; then
-        $cmd $1 $2 $3 $cfg_arg
+      # sudo mineradm miners update account $miner_n $earnings_account
+      if [ $# -eq 4 ]; then
+        local miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
+        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
+        res=$($cmd $1 "earnings" $4 $cfg_arg)
+        log_info "$res"
         if [ $? -ne 0 ]; then
-          log_err "$3: Update Operation Failed"
+          log_err "$3: Change EarningsAcc Operation Failed"
           exit 1
         else
-          log_success "$3: Update Operation Success"
-          exit 0
+          if echo "$res" | grep -q "!"; then
+            log_err "$3: Change EarningsAcc Operation Failed"
+            exit 1
+          else
+            log_success "$3: Change EarningsAcc Operation Success"
+            exit 0
+          fi
+        fi
+      # sudo mineradm miners update account $earnings_account
+      elif [ $# -eq 3 ]; then
+        res=$($cmd $1 "earnings" $3 $cfg_arg)
+        log_info "$res"
+        if [ $? -ne 0 ]; then
+          log_err "${names_array[$i]}: Change EarningsAcc Operation Failed"
+        else
+          if echo "$res" | grep -q "!"; then
+            log_err "${names_array[$i]}: Change EarningsAcc Operation Failed"
+          else
+            log_info "${names_array[$i]}: Change EarningsAcc Operation Success"
+          fi
         fi
       else
-        miner_ops_help
-        exit 0
+        log_err "Args Error"
+        exit 1
       fi
       ;;
     *)
