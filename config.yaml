@@ -45,7 +45,7 @@ miners:
     backupChainWsUrls: []
     # Priority tee list address
     # Bootstrap Nodes
-    Boot: "_dnsaddr.boot-bucket-testnet.cess.cloud"
+    Boot: "_dnsaddr.boot-miner-testnet.cess.cloud"
 
   - name: "miner2"
     # P2P communication port, each port must be different
@@ -70,4 +70,4 @@ miners:
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
     # Bootstrap Nodes
-    Boot: "_dnsaddr.boot-bucket-testnet.cess.cloud"
+    Boot: "_dnsaddr.boot-miner-testnet.cess.cloud"
