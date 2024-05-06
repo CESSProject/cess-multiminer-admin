@@ -12,10 +12,6 @@ EOF
 }
 
 space_info() {
-  if [ x"$mode" != x"multiminer" ]; then
-    log_info "Only on multiminer mode"
-    exit 1
-  fi
   echo "Filesystem       Size  Used Avail Use% Mounted on"
   local disk_path=$(yq eval ".miners[].diskPath" $config_path | xargs)
   read -a disk_path_arr <<<"$disk_path"

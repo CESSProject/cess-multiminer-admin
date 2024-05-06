@@ -71,22 +71,18 @@ config_generate() {
   rm -rf $build_dir/.tmp
   local base_mode_path=/opt/cess/data/$mode
 
-  if [[ "$mode" == "miners" ]]; then
-    if [ ! -d $base_mode_path/miners/ ]; then
-      log_info "mkdir : $base_mode_path/miners/"
-      mkdir -p $base_mode_path/miners/
-    fi
-    cp $build_dir/miners/* $base_mode_path/miners/
-
-    if [ ! -d $base_mode_path/chain/ ]; then
-      log_info "mkdir : $base_mode_path/chain/"
-      mkdir -p $base_mode_path/chain/
-    fi
-    cp $build_dir/chain/* $base_mode_path/chain/
-  else
-    log_err "Invalid mode value: $mode"
-    exit 1
+  if [ ! -d $base_mode_path/miners/ ]; then
+    log_info "mkdir : $base_mode_path/miners/"
+    mkdir -p $base_mode_path/miners/
   fi
+  cp $build_dir/miners/* $base_mode_path/miners/
+
+  if [ ! -d $base_mode_path/chain/ ]; then
+    log_info "mkdir : $base_mode_path/chain/"
+    mkdir -p $base_mode_path/chain/
+  fi
+  cp $build_dir/chain/* $base_mode_path/chain/
+
   chown -R root:root $build_dir
   #chmod -R 0600 $build_dir
   #chmod 0600 $config_path

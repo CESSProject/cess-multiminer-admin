@@ -123,10 +123,8 @@ purge() {
   fi
 
   if [ x"$1" = x"" ]; then
-    if [ x"$mode" == x"multiminer" ]; then
-      purge_miner
-      purge_chain
-    fi
+    purge_miner
+    purge_chain
     return $?
   fi
   if [ x"$1" = x"chain" ]; then
