@@ -21,7 +21,7 @@ inner_docker_version() {
   printf "  image              version                            image hash\n"
   show_version "config-gen" "cesslab/config-gen" "version"
   show_version "chain" "cesslab/cess-chain" "--version"
-  if [ x"$mode" == x"miners" ]; then
+  if [ x"$mode" == x"multiminer" ]; then
     show_version "miner" "cesslab/cess-miner" "version"
   fi
 }

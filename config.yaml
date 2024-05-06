@@ -1,12 +1,12 @@
 ## node configurations template
 node:
-  mode: "miners"
+  mode: "multiminer"
   ## the profile of node: devnet/testnet/mainnet
   profile: "testnet"
   # default chain url for miner, can be overwritten in miners[] as below
   chainWsUrl: "ws://127.0.0.1:9944/"
   # default backup chain urls for miner, can be overwritten in miners[] as below
-  backupChainWsUrls: ["wss://testnet-rpc0.cess.cloud/ws/", "wss://testnet-rpc1.cess.cloud/ws/", "wss://testnet-rpc2.cess.cloud/ws/", "wss://testnet-rpc3.cess.cloud/ws/"]
+  backupChainWsUrls: ["wss://testnet-rpc.cess.cloud/ws/"]
 
 ## chain configurations
 ## set option: '--skip-chain' or '-s' to skip installing chain (mineradm install --skip-chain)
@@ -26,7 +26,7 @@ miners:
     port: 15001
     # Maximum space used, the unit is GiB
     UseSpace: 1000
-    # Number of cpu's used, 0 means use all
+    # Number of cpu's processor used, 0 means use all
     UseCpu: 2
     # earnings account
     earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -40,7 +40,7 @@ miners:
     # miner work at this path
     diskPath: "/mnt/cess_storage1"
     # The rpc endpoint of the chain
-    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/` wss://testnet-rpc3.cess.cloud/ws/`
+    # `official chain: "wss://testnet-rpc.cess.cloud/ws/"`
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
     # Priority tee list address
@@ -52,7 +52,7 @@ miners:
     port: 15002
     # Maximum space used, the unit is GiB
     UseSpace: 1000
-    # Number of cpu's used
+    # Number of cpu's processor used
     UseCpu: 2
     # earnings account
     earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
@@ -66,7 +66,7 @@ miners:
     # miner work at this path
     diskPath: "/mnt/cess_storage2"
     # The rpc endpoint of the chain
-    # `official chain: wss://testnet-rpc0.cess.cloud/ws/ wss://testnet-rpc1.cess.cloud/ws/ wss://testnet-rpc2.cess.cloud/ws/` wss://testnet-rpc3.cess.cloud/ws/`
+    # `official chain: "wss://testnet-rpc.cess.cloud/ws/"`
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
     # Bootstrap Nodes

@@ -123,7 +123,7 @@ purge() {
   fi
 
   if [ x"$1" = x"" ]; then
-    if [ x"$mode" == x"miners" ]; then
+    if [ x"$mode" == x"multiminer" ]; then
       purge_miner
       purge_chain
     fi

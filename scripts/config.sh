@@ -3,9 +3,9 @@
 source /opt/cess/mineradm/scripts/utils.sh
 
 mode=$(yq eval ".node.mode" $config_path)
-if [ x"$mode" != x"miners" ]; then
-  log_info "The mode in $config_path is invalid, set value to: miners"
-  yq -i eval ".node.mode=\"miners\"" $config_path
+if [ x"$mode" != x"multiminer" ]; then
+  log_info "The mode in $config_path is invalid, set value to: multiminer"
+  yq -i eval ".node.mode=\"multiminer\"" $config_path
   mode=$(yq eval ".node.mode" $config_path)
 fi
 
