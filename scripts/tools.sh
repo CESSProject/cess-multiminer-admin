@@ -21,8 +21,7 @@ space_info() {
 }
 
 rotate_keys() {
-  check_docker_status chain
-  if [ $? -ne 0 ]; then
+  if check_docker_status chain; then
     log_info "Service chain is not started or exited now"
     return 0
   fi
