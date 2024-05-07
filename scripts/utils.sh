@@ -11,18 +11,22 @@ profile="testnet"
 kernel_ver_req="5.11"
 docker_ver_req="20.10"
 yq_ver_req="4.25"
+# processor request at least
 cpu_req=4
+# ram request at least
 ram_req=8
+# package manager: apt yum dnf ...
 PM=""
+# centos ubuntu debian redhat ...
 DISTRO=""
 
-each_miner_ram_req=4  # at least 4GB RAM for each miner
-each_miner_cpu_req=1  # at least 1 core for each miner
-each_rpcnode_ram_req=2 # at least 2GB RAM for each rpcnode
-each_rpcnode_cpu_req=1 # at least 1 core for each rpcnode
+each_miner_ram_req=4   # 4GB RAM for each miner at least
+each_miner_cpu_req=1   # 1 core for each miner at least
+each_rpcnode_ram_req=2 # 2GB RAM for each rpcnode at least
+each_rpcnode_cpu_req=1 # 1 core for each rpcnode at least
 
 function echo_c() {
-  printf "\033[0;$1m$2\033[0m\n"
+  printf "\033[0;%dm%s\033[0m\n" "$1" "$2"
 }
 
 function log_info() {
@@ -35,6 +39,30 @@ function log_success() {
 
 function log_err() {
   echo_c 35 "[ERROR] $1"
+}
+
+is_str_equal() {
+  if [ "$1" != "$2" ]; then
+    log_err "Parameter input error, $1 is not match with $2"
+    exit 1
+  fi
+}
+
+# is_match_regex miner miner1 ---> true
+# is_match_regex miner bucket1 ---> false
+is_match_regex() {
+  if [[ ! $2 =~ ^$1 ]]; then
+    log_err "Parameter input error, $2 is not a miner name, please execute [sudo docker ps] to get a right name"
+    exit 1
+  fi
+}
+
+gen_miner_cmd() {
+  # $1: miner1/miner2/miner3.....
+  # $2: cesslab/cess-miner:$profile
+  local miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $1 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
+  local cmd="docker run --rm --network=host $miner_i_volumes $2"
+  echo $cmd
 }
 
 is_ports_valid() {
@@ -74,7 +102,7 @@ rand() {
 }
 
 ensure_root() {
-  if [ $(id -u) -ne 0 ]; then
+  if [ "$(id -u)" -ne 0 ]; then
     log_err "Please run with sudo!"
     exit 1
   fi
@@ -189,8 +217,7 @@ is_cfgfile_valid() {
     exit 1
   fi
 
-  yq '.' "$config_path" >/dev/null
-  if [ $? -ne 0 ]; then
+  if ! yq '.' "$config_path" >/dev/null; then
     log_err "$config_path Parse Error, Please Check Your File Format"
     exit 1
   fi
@@ -374,8 +401,7 @@ split_miners_config() {
     local get_miner_config_by_index="yq eval '.[$i]' $build_dir/miners/config.yaml"
     local get_disk_path_by_index="yq eval '.miners[$i].diskPath' $config_path"
     local each_path="$(eval "$get_disk_path_by_index")/miner/config.yaml"
-    eval $get_miner_config_by_index >$each_path
-    if [ $? -ne 0 ]; then
+    if ! eval $get_miner_config_by_index >$each_path; then
       log_err "Fail to generate file: $each_path"
       exit 1
     else
@@ -387,4 +413,6 @@ split_miners_config() {
 is_uint() { case $1 in '' | *[!0-9]*) return 1 ;; esac }
 is_int() { case ${1#[-+]} in '' | *[!0-9]*) return 1 ;; esac }
 is_unum() { case $1 in '' | . | *[!0-9.]* | *.*.*) return 1 ;; esac }
-is_num() { case ${1#[-+]} in '' | . | *[!0-9.]* | *.*.*) return 1 ;; esac }
+is_num() {
+  case ${1#[-+]} in '' | . | *[!0-9.]* | *.*.*) log_err "Parameter not a number" && exit 1 ;; esac
+}
