@@ -24,7 +24,7 @@ config_show() {
   if [[ $use_external_chain -eq 0 ]]; then
     keys+=('"chain"')
   fi
-  local ss=$(join_by , ${keys[@]})
+  local ss=$(join_by , "${keys[@]}")
   yq eval ". |= pick([$ss])" $config_path -o json
 }
 
