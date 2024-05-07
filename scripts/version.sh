@@ -3,9 +3,8 @@
 source /opt/cess/mineradm/scripts/utils.sh
 
 version() {
-  printf "Node mode: ${mode}\n"
-  printf "Profile: ${profile}\n"
-  printf " version: ${_version}\n"
+  printf "Mode: %s\n" ${mode}
+  printf "Profile: %s\n" ${profile}
   inner_docker_version
 
   if [[ -f $config_path ]]; then
@@ -17,8 +16,9 @@ version() {
 }
 
 inner_docker_version() {
+  echo "----------------------------------------------------------------"
   printf "Docker images:\n"
-  printf "  image              version                            image hash\n"
+  printf "%-20s %-30s %-20s\n" "Image" "Version" "Image ID"
   show_version "config-gen" "cesslab/config-gen" "version"
   show_version "chain" "cesslab/cess-chain" "--version"
   show_version "miner" "cesslab/cess-miner" "version"
@@ -30,14 +30,8 @@ show_version() {
   local image_tag=$profile
   local version_cmd=$3
   local extra_docker_opts=$4
-  local image_hash=($(docker images | grep '^\b'$image_name'\b ' | grep $image_tag))
-  image_hash=${image_hash[2]}
+  local image_info=$(docker images | grep '^\b'$image_name'\b ' | grep $image_tag)
+  local image_id=$(echo $image_info | awk '{printf $3}')
   local version=$(docker run --rm $extra_docker_opts $image_name:$image_tag $version_cmd)
-  if [[ $prog_name == "config-gen" ]]; then
-    printf "  $prog_name         ${version}                   ${image_hash}\n"
-  elif [[ $prog_name == "chain" ]]; then
-    printf "  $prog_name              ${version}        ${image_hash}\n"
-  elif [[ $prog_name == "miner" ]]; then
-    printf "  $prog_name             ${version}                     ${image_hash}\n"
-  fi
+  printf "%-20s %-30s %-20s\n" "$prog_name" "$version" "$image_id"
 }
