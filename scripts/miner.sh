@@ -56,7 +56,7 @@ stop() {
   fi
 
   log_info "Stop service: $*"
-  docker compose -f $compose_yaml stop $*
+  docker compose -f $compose_yaml stop "$@"
   return $?
 }
 
@@ -68,18 +68,14 @@ restart() {
 
   if [ x"$1" = x"" ]; then
     log_info "Restart all services"
-    docker compose -f $compose_yaml down
-    if [ $? -eq 0 ]; then
+    if docker compose -f $compose_yaml down; then
       docker compose -f $compose_yaml up -d
     fi
     return $?
   fi
 
   log_info "Restart service: $*"
-  docker compose -f $compose_yaml rm -fs $*
-  if [ $? -eq 0 ]; then
-    docker compose -f $compose_yaml up -d
-  fi
+  docker compose -f $compose_yaml restart "$@"
   return $?
 }
 
@@ -96,7 +92,7 @@ down() {
   fi
 
   log_info "Remove service: $*"
-  docker compose -f $compose_yaml down $*
+  docker compose -f $compose_yaml down "$@"
   return $?
 }
 
@@ -141,17 +137,19 @@ purge() {
 
 purge_chain() {
   stop chain
-  rm -rf /opt/cess/data/$mode/chain/*
-  if [ $? -eq 0 ]; then
+  if rm -rf /opt/cess/data/$mode/chain/*; then
     log_success "purge chain data successfully"
+  else
+    log_err "Can not remove file in: /opt/cess/data/$mode/chain"
   fi
 }
 
 purge_miner() {
   stop
-  rm -rf /opt/cess/data/$mode/miners/*
-  if [ $? -eq 0 ]; then
+  if rm -rf /opt/cess/data/$mode/miners/*; then
     log_success "purge miner data successfully"
+  else
+    log_err "Can not remove file in: /opt/cess/data/$mode/miners"
   fi
 }
 
@@ -161,14 +159,17 @@ miner_ops() {
     return 1
   fi
 
-  docker compose -f $compose_yaml config >/dev/null
-  if [ ! $? -eq 0 ]; then
+  if ! docker compose -f $compose_yaml config >/dev/null; then
     log_err "docker-compose.yaml is not valid !"
+    exit 1
   fi
 
   case "$1" in
   increase)
+    # sudo mineradm miners increase staking $deposit_amount
     if [ $# -eq 3 ]; then
+      is_str_equal $2 "staking"
+      is_num $3
       log_info "WARNING: This operation will increase all of your miners stake"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
@@ -179,6 +180,7 @@ miner_ops() {
     fi
     ;;
   exit)
+    # sudo mineradm miners exit
     if [ $# -eq 1 ]; then
       log_info "I am sure that I have staked for more than 180 days"
       log_info "WARNING: This operation will make all of your miners exit from cess network"
@@ -191,8 +193,10 @@ miner_ops() {
     fi
     ;;
   update)
+    # sudo mineradm miners update account $earnings_account
     if [ $# -eq 3 ]; then
-      log_info "WARNING: This operation will update all of your miner's earningsAcc"
+      is_str_equal $2 "account"
+      log_info "WARNING: This operation will change all of your miner's earningsAcc to $3"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -204,7 +208,7 @@ miner_ops() {
   *) ;;
   esac
 
-  local miner_names=$(yq eval '.services | keys | map(select(. == "'miner'*" )) | join(" ")' $compose_yaml)
+  local miner_names=$(yq eval '.services | keys | map(select(. == "miner*" )) | join(" ")' $compose_yaml)
   local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^miner.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
   readarray -t volumes_array <<<"$volumes" # read array split with /n
   read -a names_array <<<"$miner_names"    # read array split with " "
@@ -215,17 +219,21 @@ miner_ops() {
     local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
     case "$1" in
     increase)
-      # sudo mineradm miners increase staking <miner name> <deposit amount>
+      # sudo mineradm miners increase staking $miner_name $deposit_amount
       if [ $# -eq 4 ]; then
-        local miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
-        res=$($cmd $1 $2 $4 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        # check $2 is equal to staking
+        is_str_equal $2 "staking"
+        # check miner name is correct or not
+        is_match_regex "miner" $3
+        # $deposit_amount must be a number
+        is_num $4
+        local cmd=$(gen_miner_cmd $3 $miner_image)
+        if ! local res=$($cmd $1 $2 $4 $cfg_arg); then
           log_err "$3: Increase Operation Failed"
           exit 1
         else
-          if echo "$res" | grep -q "!"; then
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
             log_err "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
             log_err "$3: Increase Operation Failed"
             exit 1
@@ -234,76 +242,74 @@ miner_ops() {
             exit 0
           fi
         fi
-      # sudo mineradm miners increase staking <deposit amount>
+      # sudo mineradm miners increase staking $deposit_amount
       elif [ $# -eq 3 ]; then
-        res=$($cmd $1 $2 $3 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        if ! local res=$($cmd $1 $2 $3 $cfg_arg); then
           log_err "${names_array[$i]}: Increase Operation Failed"
         else
-          if echo "$res" | grep -q "!"; then
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
             log_info "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
             log_err "${names_array[$i]}: Increase Operation Failed"
           else
-            log_info "${names_array[$i]}: Increase Operation Success"
+            log_success "${names_array[$i]}: Increase Operation Success"
           fi
         fi
       else
-        log_err "Args Error"
+        log_err "Parameters Error"
+        miner_ops_help
         exit 1
       fi
       ;;
     exit)
-      # sudo mineradm miners exit <miner name>
+      # sudo mineradm miners exit $miner_name
       if [ $# -eq 2 ]; then
-        local miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
-        res=$($cmd $1 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        is_match_regex "miner" $2
+        local cmd=$(gen_miner_cmd $2 $miner_image)
+        if ! local res=$($cmd $1 $cfg_arg); then
           log_err "$2: Exit Operation Failed"
           exit 1
         else
-          if echo "$res" | grep -q "!"; then
-            log_err "Stake less than 180 days or network issue"
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
+            log_err "Stake less than 180 days or network exception"
             log_err "$2: Exit Operation Failed"
             exit 1
           else
-            log_info "$2: Exit Operation Success"
+            log_success "$2: Exit Operation Success"
             exit 0
           fi
         fi
       # sudo mineradm miners exit
       elif [ $# -eq 1 ]; then
-        res=$($cmd $1 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        if ! local res=$($cmd $1 $cfg_arg); then
           log_err "${names_array[$i]}: Exit Operation Failed"
         else
-          if echo "$res" | grep -q "!"; then
-            log_info "Stake less than 180 days or network issue"
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
+            log_info "Stake less than 180 days or network exception"
             log_err "${names_array[$i]}: Exit Operation Failed"
           else
-            log_info "${names_array[$i]}: Exit Operation Success"
+            log_success "${names_array[$i]}: Exit Operation Success"
           fi
         fi
       else
-        log_err "Args Error"
+        log_err "Parameters Error"
+        miner_ops_help
         exit 1
       fi
       ;;
     withdraw)
-      # sudo mineradm miners withdraw <miner name>
+      # sudo mineradm miners withdraw $miner_name
       if [ $# -eq 2 ]; then
-        miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
-        res=$($cmd $1 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        is_match_regex "miner" $2
+        local cmd=$(gen_miner_cmd $2 $miner_image)
+        if ! local res=$($cmd $1 $cfg_arg); then
           log_err "$2: Withdraw Operation Failed"
           exit 1
         else
-          if echo "$res" | grep -q "!"; then
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
             log_info "Please make sure the miner have staked for more than 180 days and the miner have exit the cess network"
             log_err "$2: Withdraw Operation Failed"
             exit 1
@@ -314,12 +320,11 @@ miner_ops() {
         fi
       # sudo mineradm miners withdraw
       elif [ $# -eq 1 ]; then
-        res=$($cmd $1 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        if ! local res=$($cmd $1 $cfg_arg); then
           log_err "${names_array[$i]}: Withdraw Operation Failed"
         else
-          if echo "$res" | grep -q "!"; then
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
             log_info "Please make sure the miner have staked for more than 180 days and the miner have exit the cess network"
             log_err "${names_array[$i]}: Withdraw Operation Failed"
           else
@@ -327,14 +332,14 @@ miner_ops() {
           fi
         fi
       else
-        log_err "Args Error"
+        log_err "Parameters Error"
+        miner_ops_help
         exit 1
       fi
       ;;
-    # sudo mineradm miners status
+    # sudo mineradm miners stat
     stat)
-      $cmd $1 $cfg_arg
-      if [ $? -ne 0 ]; then
+      if ! $cmd $1 $cfg_arg; then
         log_err "${names_array[$i]}: Query Failed"
       else
         log_success "${names_array[$i]}: Query Success"
@@ -342,8 +347,7 @@ miner_ops() {
       ;;
     # sudo mineradm miners reward
     reward)
-      $cmd $1 $cfg_arg
-      if [ $? -ne 0 ]; then
+      if ! $cmd $1 $cfg_arg; then
         log_err "${names_array[$i]}: Reward Operation Failed"
         exit 1
       else
@@ -351,12 +355,11 @@ miner_ops() {
       fi
       ;;
     claim)
-      # sudo mineradm miners claim <miner name>
+      # sudo mineradm miners claim $miner_name
       if [ $# -eq 2 ]; then
-        miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $2 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
-        $cmd $1 $cfg_arg
-        if [ $? -ne 0 ]; then
+        is_match_regex "miner" $2
+        local cmd=$(gen_miner_cmd $2 $miner_image)
+        if ! $cmd $1 $cfg_arg; then
           log_err "$2: Claim Operation Failed"
           exit 1
         else
@@ -365,29 +368,29 @@ miner_ops() {
         fi
       # sudo mineradm miners claim
       elif [ $# -eq 1 ]; then
-        $cmd $1 $cfg_arg
-        if [ $? -ne 0 ]; then
+        if ! $cmd $1 $cfg_arg; then
           log_err "${names_array[$i]}: Claim Operation Failed"
         else
           log_success "${names_array[$i]}: Claim Operation Success"
         fi
       else
-        log_err "Args Error"
+        log_err "Parameters Error"
+        miner_ops_help
         exit 1
       fi
       ;;
     update)
-      # sudo mineradm miners update account $miner_n $earnings_account
+      # sudo mineradm miners update account $miner_name $earnings_account
       if [ $# -eq 4 ]; then
-        local miner_i_volumes=$(docker inspect -f '{{.HostConfig.Binds}}' $3 | sed -e 's/\[\(.*\):rw \(.*\):rw\]/-v \1 -v \2/')
-        local cmd="docker run --rm --network=host $miner_i_volumes $miner_image"
-        res=$($cmd $1 "earnings" $4 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        is_str_equal $2 "account"
+        is_match_regex "miner" $3
+        local cmd=$(gen_miner_cmd $3 $miner_image)
+        if ! local res=$($cmd $1 "earnings" $4 $cfg_arg); then
           log_err "$3: Change EarningsAcc Operation Failed"
           exit 1
         else
-          if echo "$res" | grep -q "!"; then
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
             log_err "$3: Change EarningsAcc Operation Failed"
             exit 1
           else
@@ -397,19 +400,19 @@ miner_ops() {
         fi
       # sudo mineradm miners update account $earnings_account
       elif [ $# -eq 3 ]; then
-        res=$($cmd $1 "earnings" $3 $cfg_arg)
-        log_info "$res"
-        if [ $? -ne 0 ]; then
+        if ! res=$($cmd $1 "earnings" $3 $cfg_arg); then
           log_err "${names_array[$i]}: Change EarningsAcc Operation Failed"
         else
-          if echo "$res" | grep -q "!"; then
+          log_info "$res"
+          if echo "$res" | grep -q -E "!!|XX"; then
             log_err "${names_array[$i]}: Change EarningsAcc Operation Failed"
           else
-            log_info "${names_array[$i]}: Change EarningsAcc Operation Success"
+            log_success "${names_array[$i]}: Change EarningsAcc Operation Success"
           fi
         fi
       else
-        log_err "Args Error"
+        log_err "Parameters Error"
+        miner_ops_help
         exit 1
       fi
       ;;
@@ -425,13 +428,13 @@ miner_ops() {
 miner_ops_help() {
   cat <<EOF
 cess miners usage:
-    increase [amount]                   Increase the stakes of storage miner
-    exit                                Unregister the storage miner role
-    withdraw                            Withdraw stakes
-    stat                                Query storage miner information
-    reward                              Query reward information
-    claim                               Claim reward
-    update earnings [wallet account]    Update earnings account
+    increase                            Increase the stakes of storage miner: [ mineradm miners increase staking $miner_name $deposit_amount ]
+    exit                                Unregister the storage miner role: [ mineradm miners exit $miner_name ]
+    withdraw                            Withdraw stakes: [ mineradm miners withdraw $miner_name ]
+    stat                                Get storage miner stat: [ mineradm miners stat ]
+    reward                              Query reward information: [ mineradm miners reward ]
+    claim                               Claim reward: [ mineradm miners claim $miner_name ]
+    update                              Update earnings account: [ mineradm miners update account $miner_name $earnings_account ]
 EOF
 }
 
@@ -445,33 +448,33 @@ Usage:
     install                                     run all services
        option:
            -s, --skip-chain                     do not install chain if you do not run a chain at localhost
-    miners                                     miners operations
+    miners                                      miners operations
        option:
-           increase [amount]                    Increase the stakes of storage miner
+           increase                             Increase the stakes of storage miner
            exit                                 Unregister the storage miner role
            withdraw                             Withdraw stakes
            stat                                 Query storage miners stat
            reward                               Query reward information
            claim                                Claim reward
-           update earnings [wallet account]     Update earnings account
+           update                               Update earnings account
     stop                                        stop all or one cess service
        option:
            chain                                stop chain at localhost
            watchtower                           stop watchtower at localhost
-           miner_$i                            stop a specific storage node at localhost
+           miner_$i                             stop a specific storage node at localhost
     restart                                     restart all or one cess service
        option:
            chain                                restart chain at localhost
            watchtower                           restart watchtower at localhost
-           miner_$i                            restart a specific storage node at localhost
+           miner_$i                             restart a specific storage node at localhost
     down                                        down all or one cess service
        option:
            chain                                down chain at localhost
            watchtower                           down watchtower at localhost
-           miner_$i                            down a specific storage node at localhost
+           miner_$i                             down a specific storage node at localhost
     status                                      check service status
     pullimg                                     update all service images
-    purge {chain|miner}                        remove datas regarding program, WARNING: this operate can't revert, make sure you understand you do
+    purge {chain|miner}                         remove data regarding program, WARNING: this operate can't revert, make sure you understand you do
     config                                      configuration operations
        option:
            -s | show                            show configurations
@@ -490,26 +493,26 @@ load_profile
 case "$1" in
 miners)
   shift
-  miner_ops $@
+  miner_ops "$@"
   ;;
 -v | version)
   version
   ;;
-install)
+install | start)
   shift
-  install $@
+  install "$@"
   ;;
 stop)
   shift
-  stop $@
+  stop "$@"
   ;;
 restart)
   shift
-  restart $@
+  restart "$@"
   ;;
 down)
   shift
-  down $@
+  down "$@"
   ;;
 -s | status)
   shift
@@ -520,18 +523,18 @@ pullimg)
   ;;
 purge)
   shift
-  purge $@
+  purge "$@"
   ;;
 config)
   shift
-  config $@
+  config "$@"
   ;;
 profile)
   set_profile
   ;;
 tools)
   shift
-  tools $@
+  tools "$@"
   ;;
 *)
   help
