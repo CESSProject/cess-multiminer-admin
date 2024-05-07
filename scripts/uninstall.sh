@@ -18,7 +18,7 @@ install_dir=/opt/cess/mineradm
 compose_yaml=$install_dir/build/docker-compose.yaml
 bin_file=/usr/bin/mineradm
 
-if [ $(id -u) -ne 0 ]; then
+if [ "$(id -u)" -ne 0 ]; then
     echo "Please run with sudo!"
     exit 1
 fi
