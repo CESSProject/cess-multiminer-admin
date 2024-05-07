@@ -1,7 +1,7 @@
 #!/bin/bash
 
 local_base_dir=$(
-  cd $(dirname $0)
+  cd "$(dirname $0)" || exit
   pwd
 )
 
@@ -32,45 +32,42 @@ install_dependencies() {
 
   if [ x"$DISTRO" == x"Ubuntu" ]; then
     log_info "------------Apt update--------------"
-    apt-get update
-    if [ $? -ne 0 ]; then
+    if ! apt-get update; then
       log_err "Apt update failed"
       exit 1
     fi
 
     log_info "------------Install dependencies--------------"
-    apt-get install -y git jq curl wget net-tools netcat
+    if ! apt-get install -y git jq curl wget net-tools netcat; then
+      log_err "Install libs failed"
+      exit 1
+    fi
 
   elif [ x"$DISTRO" == x"CentOS" ]; then
     log_info "------------Yum update--------------"
-    yum update
-    if [ $? -ne 0 ]; then
+    if ! yum update; then
       log_err "Yum update failed"
       exit 1
     fi
     log_info "------------Install dependencies--------------"
-    yum install -y git jq curl wget net-tools nmap-ncat
-  fi
 
-  if [ $? -ne 0 ]; then
-    log_err "Install libs failed"
-    exit 1
+    if ! yum install -y git jq curl wget net-tools nmap-ncat; then
+      log_err "Install libs failed"
+      exit 1
+    fi
   fi
 
   need_install_yq=1
   while [ $need_install_yq -eq 1 ]; do
     if command_exists yq; then
       yq_ver_cur=$(yq -V 2>/dev/null | awk '{print $NF}' | cut -d . -f 1,2 | sed -r 's/^[vV]//')
-      if [ ! -z "$yq_ver_cur" ] && is_ver_a_ge_b $yq_ver_cur $yq_ver_req; then
+      if [ -n "$yq_ver_cur" ] && is_ver_a_ge_b $yq_ver_cur $yq_ver_req; then
         need_install_yq=0
       fi
     fi
     if [ $need_install_yq -eq 1 ]; then
       echo "Begin download yq ..."
-      wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_amd64 -O /tmp/yq &&
-        mv /tmp/yq /usr/bin/yq &&
-        chmod +x /usr/bin/yq
-      if [ $? -eq 0 ]; then
+      if wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_amd64 -O /tmp/yq && mv /tmp/yq /usr/bin/yq && chmod +x /usr/bin/yq; then
         log_success "yq is successfully installed!"
         yq -V
       fi
@@ -94,12 +91,7 @@ install_dependencies() {
 
   if [ $need_install_docker -eq 1 ]; then
     # install or update docker
-    mirror_opt=''
-    if [ ! -z $docker_mirror ]; then
-      mirror_opt="--mirror $docker_mirror"
-    fi
-    curl -fsSL https://get.docker.com | bash -s docker $mirror_opt
-    if [ $? -ne 0 ]; then
+    if ! curl -fsSL https://get.docker.com | bash; then
       log_err "Install docker failed"
       exit 1
     fi
@@ -107,21 +99,17 @@ install_dependencies() {
 
   # check docker-compose-plugin
   if [ x"$DISTRO" == x"Ubuntu" ]; then
-    local n=$(dpkg -l | grep docker-compose-plugin | wc -l)
-    if [ $n -eq 0 ]; then
+    if ! dpkg -l | grep -q docker-compose-plugin; then
       add_docker_ubuntu_repo
-      apt-get install -y docker-compose-plugin
-      if [ $? -ne 0 ]; then
+      if ! apt-get install -y docker-compose-plugin; then
         log_err "Install docker-compose-plugin failed"
         exit 1
       fi
     fi
   elif [ x"$DISTRO" == x"CentOS" ]; then
-    local n=$(rpm -qa | grep docker-compose-plugin | wc -l)
-    if [ $n -eq 0 ]; then
+    if ! rpm -qa | grep -q docker-compose-plugin; then
       add_docker_centos_repo
-      yum install -y docker-compose-plugin
-      if [ $? -ne 0 ]; then
+      if ! yum install -y docker-compose-plugin; then
         log_err "Install docker-compose-plugin failed"
         exit 1
       fi
@@ -138,10 +126,10 @@ install_mineradm() {
   local old_version=""
   local new_version=""
   if [ -f "$dst_utils_sh" ]; then
-    old_version=$(cat $dst_utils_sh | grep mineradm_version | awk -F = '{gsub(/"/,"");print $2}')
+    old_version=$(grep mineradm_version $dst_utils_sh | awk -F = '{gsub(/"/,"");print $2}')
   fi
   if [ -f "$src_utils_sh" ]; then
-    new_version=$(cat $src_utils_sh | grep mineradm_version | awk -F = '{gsub(/"/,"");print $2}')
+    new_version=$(grep mineradm_version $dst_utils_sh | awk -F = '{gsub(/"/,"");print $2}')
   fi
 
   echo "Begin install cess mineradm: $new_version"
@@ -227,9 +215,7 @@ done
 
 ensure_root
 get_distro_name
-if [ $? -ne 0 ]; then
-  exit 1
-fi
+
 if [ x"$DISTRO" != x"Ubuntu" ] && [ x"$DISTRO" != x"CentOS" ]; then
   log_err "Only support Ubuntu or CentOS currently"
   exit 1
