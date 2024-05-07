@@ -35,12 +35,12 @@ rotate_keys() {
 }
 
 set_no_watch_containers() {
-  local names=($@)
+  local names=("$@")
   local quoted_names=()
-  for ix in ${!names[*]}; do
-    quoted_names+=(\"${names[$ix]}\")
+  for idx in ${!names[*]}; do
+    quoted_names+=(\""${names[$idx]}"\")
   done
-  local ss=$(join_by , ${quoted_names[@]})
+  local ss=$(join_by , "${quoted_names[@]}")
   yq -i eval ".node.noWatchContainers=[$ss]" $config_path
 }
 
@@ -54,7 +54,7 @@ tools() {
       ;;
     no_watchs)
       shift
-      set_no_watch_containers $@
+      set_no_watch_containers "$@"
       ;;
     *)
       tools_help
