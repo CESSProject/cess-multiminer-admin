@@ -339,17 +339,21 @@ miner_ops() {
       ;;
     # sudo mineradm miners stat
     stat)
-      if ! $cmd $1 $cfg_arg; then
+      if ! local res=$($cmd $1 $cfg_arg); then
         log_err "${names_array[$i]}: Query Failed"
       else
-        log_success "${names_array[$i]}: Query Success"
+        log_info "$res"
+        if echo "$res" | grep -q -E "!!|XX"; then
+          log_err "${names_array[$i]}: Some exceptions has occur when query"
+        else
+          log_success "${names_array[$i]}: Query Success"
+        fi
       fi
       ;;
     # sudo mineradm miners reward
     reward)
       if ! $cmd $1 $cfg_arg; then
         log_err "${names_array[$i]}: Reward Operation Failed"
-        exit 1
       else
         log_success "${names_array[$i]}: Reward Operation Success"
       fi
