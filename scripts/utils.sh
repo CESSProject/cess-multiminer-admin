@@ -11,9 +11,9 @@ profile="testnet"
 kernel_ver_req="5.11"
 docker_ver_req="20.10"
 yq_ver_req="4.25"
-# processor request at least
+# processor request at least for installation
 cpu_req=4
-# ram request at least
+# ram request at least for installation
 ram_req=8
 # package manager: apt yum dnf ...
 PM=""
@@ -22,8 +22,8 @@ DISTRO=""
 
 each_miner_ram_req=4   # 4GB RAM for each miner at least
 each_miner_cpu_req=1   # 1 core for each miner at least
-each_rpcnode_ram_req=2 # 2GB RAM for each rpcnode at least
-each_rpcnode_cpu_req=1 # 1 core for each rpcnode at least
+each_rpcnode_ram_req=2 # 2GB RAM for each rpcnode(chain) at least
+each_rpcnode_cpu_req=1 # 1 core for each rpcnode(chain) at least
 
 function echo_c() {
   printf "\033[0;%dm%s\033[0m\n" "$1" "$2"
