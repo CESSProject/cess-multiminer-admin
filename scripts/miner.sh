@@ -108,8 +108,7 @@ status() {
 }
 
 purge() {
-  log_info "WARNING: this operation can remove all your data in /opt/cess/miners/* and can't revert."
-  log_info "         Make sure you understand you do!"
+  log_info "WARNING: this operation can remove all your data in /opt/cess/data/$mode/* and can't revert."
   printf "Press \033[0;33mY\033[0m if you really want to do: "
   local y=""
   read y
@@ -117,39 +116,16 @@ purge() {
     echo "purge operate cancel"
     return 1
   fi
-
-  if [ x"$1" = x"" ]; then
-    purge_miner
-    purge_chain
-    return $?
-  fi
-  if [ x"$1" = x"chain" ]; then
-    purge_chain
-    return $?
-  fi
-  if [ x"$1" = x"miner" ]; then
-    purge_miner
-    return $?
-  fi
-  help
-  return 1
+  purge_data
+  return $?
 }
 
-purge_chain() {
+purge_data() {
   stop chain
-  if rm -rf /opt/cess/data/$mode/chain/*; then
-    log_success "purge chain data successfully"
+  if rm -rf /opt/cess/data/$mode/*; then
+    log_success "purge data successfully"
   else
-    log_err "Can not remove file in: /opt/cess/data/$mode/chain"
-  fi
-}
-
-purge_miner() {
-  stop
-  if rm -rf /opt/cess/data/$mode/miners/*; then
-    log_success "purge miner data successfully"
-  else
-    log_err "Can not remove file in: /opt/cess/data/$mode/miners"
+    log_err "Can not remove data in: /opt/cess/data/$mode/"
   fi
 }
 
@@ -478,7 +454,7 @@ Usage:
            miner_i                              down a specific storage node at localhost
     status                                      check service status
     pullimg                                     update all service images
-    purge {chain|miner}                         remove data regarding program, WARNING: this operate can't revert, make sure you understand you do
+    purge                                       remove chain data. WARNING: this operation can't be reverted
     config                                      configuration operations
        option:
            -s | show                            show configurations
