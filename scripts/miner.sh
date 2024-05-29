@@ -465,17 +465,17 @@ Usage:
        option:
            chain                                stop chain at localhost
            watchtower                           stop watchtower at localhost
-           miner_$i                             stop a specific storage node at localhost
+           miner_i                              stop a specific storage node at localhost
     restart                                     restart all or one cess service
        option:
            chain                                restart chain at localhost
            watchtower                           restart watchtower at localhost
-           miner_$i                             restart a specific storage node at localhost
+           miner_i                              restart a specific storage node at localhost
     down                                        down all or one cess service
        option:
            chain                                down chain at localhost
            watchtower                           down watchtower at localhost
-           miner_$i                             down a specific storage node at localhost
+           miner_i                              down a specific storage node at localhost
     status                                      check service status
     pullimg                                     update all service images
     purge {chain|miner}                         remove data regarding program, WARNING: this operate can't revert, make sure you understand you do
