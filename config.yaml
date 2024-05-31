@@ -24,7 +24,10 @@ miners:
   - name: "miner1"
     # P2P communication port, each port must be different
     port: 15001
-    # Maximum space used, the unit is GiB
+    # Maximum space used in each miner, the unit is GiB
+    # The declaration space on chain is the UseSpace after round up to the closest TB
+    # If set UseSpace 2300, that means declare 3 TiB space on the chain
+    # If set UseSpace 300, that means declare 1 TiB space on the chain
     UseSpace: 1000
     # Number of cpu's processor used, 0 means use all
     UseCpu: 2
@@ -50,7 +53,10 @@ miners:
   - name: "miner2"
     # P2P communication port, each port must be different
     port: 15002
-    # Maximum space used, the unit is GiB
+    # Maximum space used in each miner, the unit is GiB
+    # The declaration space on chain is the UseSpace after round up to the closest TB
+    # If set UseSpace to 2100, that means declare 3 TiB space on the chain
+    # If set UseSpace to 300, that means declare 1 TiB space on the chain
     UseSpace: 1000
     # Number of cpu's processor used
     UseCpu: 2
