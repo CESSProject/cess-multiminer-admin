@@ -193,7 +193,7 @@ miner_ops() {
             log_success "${names_array[$i]}: Increase Stake Operation Success"
           fi
         fi
-        log_info "\n"
+        echo
       done
     # sudo mineradm miners increase space $miner_name $space_amount(TB)
     elif [ $# -eq 4 ] && [ $2 == "space" ]; then
@@ -242,7 +242,7 @@ miner_ops() {
             log_success "${names_array[$i]}: Increase Declaration Space to $3 TiB Operation Success"
           fi
         fi
-        log_info "\n"
+        echo
       done
     else
       log_err "Parameters Error"
@@ -292,7 +292,7 @@ miner_ops() {
             log_success "${names_array[$i]}: Exit Operation Success"
           fi
         fi
-        log_info "\n"
+        echo
       done
     else
       log_err "Parameters Error"
@@ -334,7 +334,7 @@ miner_ops() {
             log_success "${names_array[$i]}: Withdraw Operation Success"
           fi
         fi
-        log_info "\n"
+        echo
       done
     else
       log_err "Parameters Error"
@@ -356,7 +356,7 @@ miner_ops() {
           log_success "${names_array[$i]}: Query Success"
         fi
       fi
-      log_info "\n"
+      echo
     done
     ;;
   # sudo mineradm miners reward
@@ -368,7 +368,7 @@ miner_ops() {
       else
         log_success "${names_array[$i]}: Reward Operation Success"
       fi
-      log_info "\n"
+      echo
     done
     ;;
   claim)
@@ -392,7 +392,7 @@ miner_ops() {
         else
           log_success "${names_array[$i]}: Claim Operation Success"
         fi
-        log_info "\n"
+        echo
       done
     else
       log_err "Parameters Error"
@@ -441,7 +441,7 @@ miner_ops() {
             log_success "${names_array[$i]}: Change EarningsAcc To $3 Operation Success"
           fi
         fi
-        log_info "\n"
+        echo
       done
     else
       log_err "Parameters Error"
