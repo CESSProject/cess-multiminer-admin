@@ -41,6 +41,64 @@ function log_err() {
   echo_c 35 "[ERROR] $1"
 }
 
+backup_config() {
+  local disk_path=$(yq eval ".miners[].diskPath" $config_path | xargs)
+  read -a disk_path_arr <<<"$disk_path"
+  if [ ! -d /tmp/minerbkdir ]; then
+    mkdir /tmp/minerbkdir
+  fi
+  if [ -f $config_path ]; then
+    cp $config_path /tmp/minerbkdir/
+  fi
+  if [ -f $compose_yaml ]; then
+    cp $compose_yaml /tmp/minerbkdir/
+  fi
+  for disk_path in "${disk_path_arr[@]}"; do
+    if [ ! -d /tmp/minerbkdir/$disk_path ]; then
+      mkdir -p /tmp/minerbkdir/$disk_path
+    fi
+    cp -r $disk_path/miner/* /tmp/minerbkdir/$disk_path/
+  done
+  log_info "Backup configuration at: /tmp/minerbkdir"
+}
+
+check_disk_unit(){
+  # $1: /mnt/cess_storage1
+  # $2: g/t/p
+  df -h $1 | awk '{print $2}' | tail -n 1 | grep -i $2 >/dev/null
+  # have g/t/p in str -> return 0, else return 1
+  return $?
+}
+
+get_current_used_space() {
+  # $1 is a text file
+  local current_used_num=$(grep -i "used" $1 | cut -d '|' -f 3 | awk '{print $1}')
+  local current_used_unit=$(grep -i "used" $1 | cut -d '|' -f 3 | awk '{print $2}')
+  if echo $current_used_unit | grep -i "g" >/dev/null; then # GB
+    current_used_num=$current_used_num
+  elif echo $current_used_unit | grep -i "t" >/dev/null; then # TB
+    current_used_num=$(echo "scale=3; $current_used_num * 1024" | bc)
+  elif echo $current_used_unit | grep -i "p" >/dev/null; then # PB
+    current_used_num=$(echo "scale=3; $current_used_num * 1024 * 1024" | bc)
+  else
+    current_used_num=$(($current_used_num / 1024)) # MB
+  fi
+  return $current_used_num # unit: GiB
+}
+
+get_disk_size() {
+  # $1: /mnt/cess_storage1
+  local disk_size=$(df -h "$1" | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
+  if check_disk_unit $1 "g"; then
+    disk_size=$disk_size
+  elif check_disk_unit $1 "t"; then
+    disk_size=$(echo "scale=3; $disk_size * 1024" | bc)
+  elif check_disk_unit $1 "p"; then
+    disk_size=$(echo "scale=3; $disk_size * 1024 * 1024" | bc)
+  fi
+  return $disk_size
+}
+
 is_str_equal() {
   if [ "$1" != "$2" ]; then
     log_err "Parameter input error, $1 is not match with $2"
@@ -210,8 +268,6 @@ get_miners_num() {
 }
 
 is_cfgfile_valid() {
-  log_info "Read configuration from Path: $config_path"
-
   if [ ! -f "$config_path" ]; then
     log_err "ConfigFileNotFoundException: $config_path do not exist"
     exit 1
