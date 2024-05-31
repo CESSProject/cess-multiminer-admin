@@ -89,7 +89,7 @@ config_generate() {
 
   split_miners_config
 
-  log_success "docker-compose.yaml generated at: $build_dir"
+  log_success "docker-compose.yaml generated at: $compose_yaml"
 }
 
 config() {
