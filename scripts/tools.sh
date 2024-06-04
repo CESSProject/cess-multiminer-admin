@@ -62,19 +62,19 @@ set() {
             # get current disk total size
             local disk_size=$(get_disk_size $now_disk_path_config)
             if [ $2 -gt $disk_size ]; then # request bigger than actual disk size: insufficient disk space
-              log_err "Current disk only $disk_size in total, but set $2 for UseSpace, ${names_array[$i]} increase UseSpace operation failed"
+              log_err "Current disk only $disk_size GiB in total, but set $2 for UseSpace, ${names_array[$i]} increase UseSpace operation failed"
             else
               yq -i eval ".miners[$i].UseSpace=$2" $config_path
             fi
           else # decrease UseSpace operation
             # 88.88 > 8.88, return 1
             # 88.88 > 188.88, return 0
-            result1=$(echo "$now_use_space_config > $current_used_num" | bc)
-            result2=$(echo "$2 > $current_used_num" | bc)
+            local result1=$(echo "$now_use_space_config > $current_used_num" | bc)
+            local result2=$(echo "$2 > $current_used_num" | bc)
             if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
               yq -i eval ".miners[$i].UseSpace=$2" $config_path
             else
-              log_err "${names_array[$i]} use $current_used_num GB currently, change useSpace from $now_use_space_config to $2 failed"
+              log_err "${names_array[$i]} use $current_used_num GiB currently, change useSpace from $now_use_space_config to $2 failed"
             fi
           fi
         else
@@ -85,6 +85,7 @@ set() {
       backup_config
       config_generate
       mineradm down $miner_names
+      sleep 3
       mineradm install -s
     # mineradm tools set use-space miner1 500  (unit: GiB)
     elif [ $# -eq 3 ]; then
@@ -117,15 +118,15 @@ set() {
           # get current disk total size
           local disk_size=$(get_disk_size $now_disk_path_config)
           if [ $3 -gt $disk_size ]; then # request bigger than actual disk size: insufficient disk space
-            log_err "Current disk only $disk_size in total, but set $3 for UseSpace"
+            log_err "Current disk only $disk_size GiB in total, but set $3 for UseSpace"
             rm -f $tmp_file
             exit 1
           else
             yq -i eval ".miners[$index].UseSpace=$3" $config_path
           fi
         else # decrease operation
-          result1=$(echo "$now_use_space_config > $current_used_num" | bc)
-          result2=$(echo "$3 > $current_used_num" | bc)
+          local result1=$(echo "$now_use_space_config > $current_used_num" | bc)
+          local result2=$(echo "$3 > $current_used_num" | bc)
           if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
             yq -i eval ".miners[$index].UseSpace=$3" $config_path
           else
@@ -137,6 +138,7 @@ set() {
         backup_config
         config_generate
         mineradm down $2
+        sleep 3
         mineradm install -s
       else
         log_err "Query miner stat failed, please check miner:$2 status"
