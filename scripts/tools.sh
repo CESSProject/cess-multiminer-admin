@@ -46,7 +46,7 @@ set() {
         exit 1
       fi
       is_num $2
-      if $2 -le 0; then
+      if [ $2 -le 0 ]; then
         log_err "Space cannot less or equal to 0"
         exit 1
       fi
@@ -90,7 +90,7 @@ set() {
     elif [ $# -eq 3 ]; then
       is_match_regex "miner" $2
       is_num $3
-      if $3 -le 0; then
+      if [ $3 -le 0 ]; then
         log_err "Space cannot less or equal to 0"
         exit 1
       fi
