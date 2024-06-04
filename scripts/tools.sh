@@ -38,7 +38,7 @@ set() {
     is_cfgfile_valid
     # mineradm tools set use-space 500  (unit: GiB)
     if [ $# -eq 2 ]; then
-      log_info "WARNING: This operation will set all of miners UseSpace to $2 GiB and restart services"
+      log_info "WARNING: This operation will set all of miners UseSpace to $2 GiB and restart storage miners"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -110,7 +110,7 @@ set() {
           local disk_size=$(get_disk_size $now_disk_path_config)
           if [ $3 -gt $disk_size ]; then # request bigger than actual disk size: insufficient disk space
             log_err "Current disk only $disk_size in total, but set $3 for UseSpace"
-            rm -f $cidfile
+            rm -f $tmp_file
             exit 1
           else
             yq -i eval ".miners[$index].UseSpace=$3" $config_path
@@ -122,6 +122,8 @@ set() {
             yq -i eval ".miners[$index].UseSpace=$3" $config_path
           else
             log_err "$2 use $current_used_num GB currently, change useSpace from $now_use_space_config to $3 failed"
+            rm -f $tmp_file
+            exit 1
           fi
         fi
         backup_config
@@ -130,8 +132,10 @@ set() {
         mineradm restart $2
       else
         log_err "Query miner stat failed, please check miner:$2 status"
+        rm -f $tmp_file
+        exit 1
       fi
-      rm -f $cidfile
+      rm -f $tmp_file
     else
       log_err "Parameters Error"
       tools_help
