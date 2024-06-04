@@ -46,6 +46,10 @@ set() {
         exit 1
       fi
       is_num $2
+      if $2 -le 0; then
+        log_err "Space cannot less or equal to 0"
+        exit 1
+      fi
       for i in "${!volumes_array[@]}"; do
         local tmp_file=$(mktemp)
         local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
@@ -80,12 +84,16 @@ set() {
       done
       backup_config
       config_generate
-      mineradm down
-      mineradm restart
+      mineradm down $miner_names
+      mineradm install -s
     # mineradm tools set use-space miner1 500  (unit: GiB)
     elif [ $# -eq 3 ]; then
       is_match_regex "miner" $2
       is_num $3
+      if $3 -le 0; then
+        log_err "Space cannot less or equal to 0"
+        exit 1
+      fi
       local index=99999
       for i in "${!names_array[@]}"; do
         if [ ${names_array[$i]} == $2 ]; then
@@ -129,7 +137,7 @@ set() {
         backup_config
         config_generate
         mineradm down $2
-        mineradm restart $2
+        mineradm install -s
       else
         log_err "Query miner stat failed, please check miner:$2 status"
         rm -f $tmp_file
