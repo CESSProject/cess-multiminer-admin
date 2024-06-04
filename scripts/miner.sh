@@ -157,23 +157,23 @@ miner_ops() {
       is_num $4
       local cmd=$(gen_miner_cmd $3 $miner_image)
       if ! local res=$($cmd $1 $2 $4 $cfg_arg); then
-        log_err "$3: Increase Stake Operation Failed"
+        log_err "$3: Increase Stake Failed"
         exit 1
       else
         log_info "$res"
         if echo "$res" | grep -q -E "!!|XX"; then
-          log_err "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
-          log_err "$3: Increase Stake Operation Failed"
+          log_err "Please make sure that the miner has enough TCESS in signatureAcc and the signatureAcc is the same as stakingAcc"
+          log_err "$3: Increase Stake Failed"
           exit 1
         else
-          log_success "$3: Increase Stake Operation Success"
+          log_success "$3: Increase Stake To $4"
           exit 0
         fi
       fi
     # sudo mineradm miners increase staking $token_amount
     elif [ $# -eq 3 ] && [ $2 == "staking" ]; then
       is_num $3
-      log_info "WARNING: This operation will increase all of your miners stake"
+      log_info "WARNING: This operation will increase all of the miners stake and cannot be reverted"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -183,14 +183,14 @@ miner_ops() {
       for i in "${!volumes_array[@]}"; do
         local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
         if ! local res=$($cmd $1 $2 $3 $cfg_arg); then
-          log_err "${names_array[$i]}: Increase Stake Operation Failed"
+          log_err "${names_array[$i]}: Increase Stake Failed"
         else
           log_info "$res"
           if echo "$res" | grep -q -E "!!|XX"; then
-            log_info "Please make sure that you have enough TCESS in signatureAcc and signatureAcc is same as stakingAcc"
-            log_err "${names_array[$i]}: Increase Stake Operation Failed"
+            log_info "Please make sure that the miners have enough TCESS in signatureAcc and each signatureAcc is the same as its stakingAcc"
+            log_err "${names_array[$i]}: Increase Stake Failed"
           else
-            log_success "${names_array[$i]}: Increase Stake Operation Success"
+            log_success "${names_array[$i]}: Increase Stake To $3"
           fi
         fi
         echo
@@ -203,25 +203,24 @@ miner_ops() {
       is_num $4
       local cmd=$(gen_miner_cmd $3 $miner_image)
       if ! local res=$($cmd $1 $2 $4 $cfg_arg); then
-        log_err "$3: Increase Declaration Space Operation Failed"
+        log_err "$3: Increase Declaration Space Failed"
         log_err "Network exception or insufficient balance in stakingAcc"
         exit 1
       else
         log_info "$res"
         if echo "$res" | grep -q -E "!!|XX"; then
-          log_err "Please make sure that miner:$3 have enough TCESS in stakingAcc"
-          log_err "$3: Increase Declaration Space Operation Failed"
+          log_err "Please make sure that miner:$3 has enough TCESS in stakingAcc"
+          log_err "$3: Increase Declaration Space Failed"
           exit 1
         else
-          log_success "$3: Increase Declaration Space to $4 TiB Operation Success"
+          log_success "$3: Increase Declaration Space to $4 TiB Successfully"
           exit 0
         fi
       fi
     # sudo mineradm miners increase space $space_amount (TB)
     elif [ $# -eq 3 ] && [ $2 == "space" ]; then
       is_num $3
-      log_info "WARNING: This operation will increase the declaration space of all miners on the chain by $3 TiB"
-      log_info "WARNING: This operation can not be reverted!"
+      log_info "WARNING: This operation will increase the declaration space of all miners on the chain by $3 TiB and cannot be reverted"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -236,7 +235,7 @@ miner_ops() {
         else
           log_info "$res"
           if echo "$res" | grep -q -E "!!|XX"; then
-            log_err "Please make sure that miner:${names_array[$i]} have enough TCESS in stakingAcc"
+            log_err "Please make sure that the miner:${names_array[$i]} have enough TCESS in stakingAcc"
             log_err "${names_array[$i]}: Increase Declaration Space Operation Failed"
           else
             log_success "${names_array[$i]}: Increase Declaration Space to $3 TiB Operation Success"
@@ -271,8 +270,8 @@ miner_ops() {
       fi
     # sudo mineradm miners exit
     elif [ $# -eq 1 ]; then
-      log_info "WARNING: This operation will make all of your miners exit from cess network"
-      log_info "I am sure that I have staked for more than 180 days"
+      log_info "WARNING: This operation will make all of the miners exit from cess network and cannot be reverted"
+      log_info "Please make sure that the miner have staked for more than 180 days"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -311,7 +310,7 @@ miner_ops() {
       else
         log_info "$res"
         if echo "$res" | grep -q -E "!!|XX"; then
-          log_info "Please make sure the miner have staked for more than 180 days and the miner have exit the cess network already"
+          log_info "Please make sure that the miner has been staking for more than 180 days and the miner has already exited the cess network"
           log_err "$2: Withdraw Operation Failed"
           exit 1
         else
@@ -328,7 +327,7 @@ miner_ops() {
         else
           log_info "$res"
           if echo "$res" | grep -q -E "!!|XX"; then
-            log_info "Please make sure the miner have staked for more than 180 days and the miner have exit the cess network already"
+            log_info "Please make sure that the miners have been staking for more than 180 days and the miners have already exited the cess network"
             log_err "${names_array[$i]}: Withdraw Operation Failed"
           else
             log_success "${names_array[$i]}: Withdraw Operation Success"
@@ -347,13 +346,13 @@ miner_ops() {
     for i in "${!volumes_array[@]}"; do
       local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
       if ! local res=$($cmd $1 $cfg_arg); then
-        log_err "${names_array[$i]}: Some exceptions has occur when request to chain"
+        log_err "${names_array[$i]}: Some exceptions have occurred when request on chain"
       else
-        log_info "$res"
         if echo "$res" | grep -q -E "!!|XX"; then
-          log_err "${names_array[$i]}: Some exceptions has occur when request to chain"
+          log_err "${names_array[$i]}: Some exceptions have occurred when request on chain"
         else
-          log_success "${names_array[$i]}: Query Success"
+          log_success "-----------------------------------${names_array[$i]}-----------------------------------"
+          log_info "$res"
         fi
       fi
       echo
@@ -407,22 +406,22 @@ miner_ops() {
       is_match_regex "miner" $3
       local cmd=$(gen_miner_cmd $3 $miner_image)
       if ! local res=$($cmd $1 "earnings" $4 $cfg_arg); then
-        log_err "$3: Change EarningsAcc To $4 Operation Failed"
+        log_err "$3: Change To EarningsAcc:$4 Failed"
         exit 1
       else
         log_info "$res"
         if echo "$res" | grep -q -E "!!|XX"; then
-          log_err "$3: Change EarningsAcc To $4 Operation Failed"
+          log_err "$3: Change To EarningsAcc:$4 Failed"
           exit 1
         else
-          log_success "$3: Change EarningsAcc To $4 Operation Success"
+          log_success "$3: Change To EarningsAcc:$4"
           exit 0
         fi
       fi
     # sudo mineradm miners update account $earnings_account
     elif [ $# -eq 3 ]; then
       is_str_equal $2 "account"
-      log_info "WARNING: This operation will change all of your miner's earningsAcc to $3"
+      log_info "WARNING: This operation will change all of miners earningsAcc to $3"
       printf "Press \033[0;33mY\033[0m to continue: "
       local y=""
       read y
@@ -432,13 +431,13 @@ miner_ops() {
       for i in "${!volumes_array[@]}"; do
         local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
         if ! res=$($cmd $1 "earnings" $3 $cfg_arg); then
-          log_err "${names_array[$i]}: Change EarningsAcc To $3 Operation Failed"
+          log_err "${names_array[$i]}: Change To EarningsAcc:$3 Failed"
         else
           log_info "$res"
           if echo "$res" | grep -q -E "!!|XX"; then
-            log_err "${names_array[$i]}: Change EarningsAcc To $3 Operation Failed"
+            log_err "${names_array[$i]}: Change To EarningsAcc:$3 Failed"
           else
-            log_success "${names_array[$i]}: Change EarningsAcc To $3 Operation Success"
+            log_success "${names_array[$i]}: Change To EarningsAcc:$3"
           fi
         fi
         echo
