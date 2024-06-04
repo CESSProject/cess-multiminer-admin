@@ -62,7 +62,7 @@ backup_config() {
   log_info "Backup configuration at: /tmp/minerbkdir"
 }
 
-check_disk_unit(){
+check_disk_unit() {
   # $1: /mnt/cess_storage1
   # $2: g/t/p
   df -h $1 | awk '{print $2}' | tail -n 1 | grep -i $2 >/dev/null
@@ -76,14 +76,18 @@ get_current_used_space() {
   local current_used_unit=$(grep -i "used" $1 | cut -d '|' -f 3 | awk '{print $2}')
   if echo $current_used_unit | grep -i "g" >/dev/null; then # GB
     current_used_num=$current_used_num
-  elif echo $current_used_unit | grep -i "t" >/dev/null; then # TB
-    current_used_num=$(echo "scale=3; $current_used_num * 1024" | bc)
+  elif echo $current_used_unit | grep -i "byte" >/dev/null; then # Bytes
+    current_used_num=1
   elif echo $current_used_unit | grep -i "p" >/dev/null; then # PB
     current_used_num=$(echo "scale=3; $current_used_num * 1024 * 1024" | bc)
+  elif echo $current_used_unit | grep -i "t" >/dev/null; then # TB
+    current_used_num=$(echo "scale=3; $current_used_num * 1024" | bc)
+  elif echo $current_used_unit | grep -i "k" >/dev/null; then # KB
+    current_used_num=1
   else
     current_used_num=$(($current_used_num / 1024)) # MB
   fi
-  return $current_used_num # unit: GiB
+  echo $current_used_num # unit: GiB
 }
 
 get_disk_size() {
@@ -96,7 +100,7 @@ get_disk_size() {
   elif check_disk_unit $1 "p"; then
     disk_size=$(echo "scale=3; $disk_size * 1024 * 1024" | bc)
   fi
-  return $disk_size
+  echo $disk_size # unit: GiB
 }
 
 is_str_equal() {
