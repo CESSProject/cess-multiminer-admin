@@ -364,7 +364,7 @@ is_disk_satisfied() {
 
   for i in "${!diskPath_arr[@]}"; do
     local path_i_size=$(df -h "${diskPath_arr[$i]}" | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
-    if df -h "${diskPath_arr[$i]}" | awk '{print $4}' | tail -n 1 | grep -i "t" >/dev/null; then
+    if df -h "${diskPath_arr[$i]}" | awk '{print $2}' | tail -n 1 | grep -i "t" >/dev/null; then
       path_i_size=$(echo "scale=3; $path_i_size * 1024" | bc)
     fi
     total_avail=$(echo "$total_avail + $path_i_size" | bc)
@@ -434,9 +434,9 @@ get_cur_ram() {
   local cur_ram=0
   local ram_unit=$(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $3}' | grep -E "GB|MB" | head -n 1)
   if [ "$ram_unit" == "MB" ]; then
-    for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}'); do cur_ram=$((cur_ram + $num / 1000)); done
+    for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}' |grep -o '[0-9]*'); do cur_ram=$((cur_ram + $num / 1000)); done
   elif [ "$ram_unit" == "GB" ]; then
-    for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}'); do cur_ram=$((cur_ram + $num)); done
+    for num in $(sudo dmidecode -t memory | grep -v "No Module Installed" | grep -i size | awk '{print $2}' |grep -o '[0-9]*'); do cur_ram=$((cur_ram + $num)); done
   else
     log_err "RAM unit can not be recognized"
   fi
