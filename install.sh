@@ -181,6 +181,10 @@ install_mineradm() {
   cp $local_script_dir/miner.sh $dst_bin
   chmod +x $dst_bin
 
+  chmod +x $install_dir/script/*
+  echo "source $install_dir/script/mineradm-completion.bash" >> ~/.bashrc
+  source $install_dir/script/mineradm-completion.bash
+
   log_success "Install cess mineradm success"
 }
 
