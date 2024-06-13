@@ -70,10 +70,10 @@ check_disk_unit() {
   return $?
 }
 
-get_current_used_space() {
+get_current_validated_space() {
   # $1 is a text file
-  local current_used_num=$(grep -i "used" $1 | cut -d '|' -f 3 | awk '{print $1}')
-  local current_used_unit=$(grep -i "used" $1 | cut -d '|' -f 3 | awk '{print $2}')
+  local current_used_num=$(grep -i "validated" $1 | cut -d '|' -f 3 | awk '{print $1}')
+  local current_used_unit=$(grep -i "validated" $1 | cut -d '|' -f 3 | awk '{print $2}')
   if echo $current_used_unit | grep -i "g" >/dev/null; then # GB
     current_used_num=$current_used_num
   elif echo $current_used_unit | grep -i "byte" >/dev/null; then # Bytes

@@ -55,7 +55,7 @@ set() {
         local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
         if $cmd "stat" $cfg_arg >$tmp_file; then
           # transfer current_used_num to unit: GiB
-          local current_used_num=$(get_current_used_space $tmp_file)
+          local current_used_num=$(get_current_validated_space $tmp_file)
           local now_use_space_config=$(yq eval ".miners[$i].UseSpace" $config_path)
           local now_disk_path_config=$(yq eval ".miners[$i].diskPath" $config_path)
           if [ $2 -gt $now_use_space_config ]; then # increase UseSpace operation
@@ -74,7 +74,7 @@ set() {
             if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
               yq -i eval ".miners[$i].UseSpace=$2" $config_path
             else
-              log_err "${names_array[$i]} use $current_used_num GiB currently, change useSpace from $now_use_space_config to $2 failed"
+              log_err "${names_array[$i]} has validated $current_used_num GiB on chain currently, useSpace cant less than validated space, change useSpace from $now_use_space_config to $2 failed"
             fi
           fi
         else
@@ -111,7 +111,7 @@ set() {
       local cmd=$(gen_miner_cmd $2 $miner_image)
 
       if $cmd "stat" $cfg_arg >$tmp_file; then
-        local current_used_num=$(get_current_used_space $tmp_file)
+        local current_used_num=$(get_current_validated_space $tmp_file)
         local now_use_space_config=$(yq eval ".miners[$index].UseSpace" $config_path)
         local now_disk_path_config=$(yq eval ".miners[$index].diskPath" $config_path)
         if [ $3 -gt $now_use_space_config ]; then # increase operation
@@ -130,7 +130,7 @@ set() {
           if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
             yq -i eval ".miners[$index].UseSpace=$3" $config_path
           else
-            log_err "$2 use $current_used_num GB currently, change useSpace from $now_use_space_config to $3 failed"
+            log_err "$2 has validated $current_used_num GB on chain currently, useSpace cant less than validated space, change useSpace from $now_use_space_config to $3 failed"
             rm -f $tmp_file
             exit 1
           fi
