@@ -23,7 +23,7 @@ _mineradm_completions() {
     esac
   fi
 
-  COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
+  COMPREPLY=("$(compgen -W "${opts}" -- ${cur})")
   return 0
 }
 
