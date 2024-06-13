@@ -6,7 +6,6 @@ source /opt/cess/mineradm/scripts/config.sh
 tools_help() {
   cat <<EOF
 cess tools usage:
-    rotate-keys                                            generate session key of chain node
     space-info                                             show information about miner disk
     no-watch                                               do not auto-update container: {autoheal/chain/miner1/miner2...}
     set
@@ -159,20 +158,6 @@ set() {
   esac
 }
 
-rotate_keys() {
-  if check_docker_status chain; then
-    log_info "Service chain is not started or exited now"
-    return 0
-  fi
-  local res=$(docker exec chain curl -H 'Content-Type: application/json' -d '{"id":1, "jsonrpc":"2.0", "method": "author_rotateKeys", "params":[]}' http://localhost:9944 2>/dev/null)
-  session_key=$(echo $res | jq .result)
-  if [ x"$session_key" = x"" ]; then
-    log_err "Generate session key failed"
-    return 1
-  fi
-  echo $session_key
-}
-
 set_no_watch_containers() {
   local names=("$@")
   local quoted_names=()
@@ -185,9 +170,6 @@ set_no_watch_containers() {
 
 tools() {
   case "$1" in
-  rotate-keys)
-    rotate_keys
-    ;;
   -s | space-info)
     space_info
     ;;

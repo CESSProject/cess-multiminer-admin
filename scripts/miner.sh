@@ -515,7 +515,6 @@ Usage:
     profile {devnet|testnet|mainnet}            switch CESS network profile, testnet for default
     tools                                       use 'mineradm tools help' for more details
        option:
-           rotate-keys                          generate session key of chain node
            space-info                           show information about miner disk
            no-watch                             do not auto-update container: {autoheal/chain/miner1/miner2 ...}
            set
