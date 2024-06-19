@@ -45,6 +45,9 @@ install_dependencies() {
     if ! command_exists nc; then
       apt-get install -y netcat
     fi
+    if ! command_exists bc; then
+      apt-get install -y bc
+    fi
 
   elif [ x"$DISTRO" == x"CentOS" ]; then
     log_info "------------Yum update--------------"
@@ -60,6 +63,9 @@ install_dependencies() {
     fi
     if ! command_exists nc; then
       yum install -y nmap-ncat
+    fi
+    if ! command_exists bc; then
+      yum install -y bc
     fi
   fi
 
