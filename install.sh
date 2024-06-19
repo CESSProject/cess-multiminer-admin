@@ -38,9 +38,12 @@ install_dependencies() {
     fi
 
     log_info "------------Install dependencies--------------"
-    if ! apt-get install -y git jq curl wget net-tools netcat; then
+    if ! apt-get install -y git jq curl wget net-tools; then
       log_err "Install libs failed"
       exit 1
+    fi
+    if ! command_exists nc; then
+      apt-get install -y netcat
     fi
 
   elif [ x"$DISTRO" == x"CentOS" ]; then
@@ -51,9 +54,12 @@ install_dependencies() {
     fi
     log_info "------------Install dependencies--------------"
 
-    if ! yum install -y git jq curl wget net-tools nmap-ncat; then
+    if ! yum install -y git jq curl wget net-tools; then
       log_err "Install libs failed"
       exit 1
+    fi
+    if ! command_exists nc; then
+      yum install -y nmap-ncat
     fi
   fi
 
@@ -129,7 +135,7 @@ install_mineradm() {
     old_version=$(grep mineradm_version $dst_utils_sh | awk -F = '{gsub(/"/,"");print $2}')
   fi
   if [ -f "$src_utils_sh" ]; then
-    new_version=$(grep mineradm_version $dst_utils_sh | awk -F = '{gsub(/"/,"");print $2}')
+    new_version=$(grep mineradm_version $src_utils_sh | awk -F = '{gsub(/"/,"");print $2}')
   fi
 
   echo "Begin install cess mineradm: $new_version"
@@ -181,8 +187,8 @@ install_mineradm() {
   cp $local_script_dir/miner.sh $dst_bin
   chmod +x $dst_bin
 
-  chmod +x $install_dir/scripts/*
-  echo "source $install_dir/scripts/completion.sh" >> ~/.bashrc
+  chmod +x $install_dir/scripts/*.sh
+  echo "source $install_dir/scripts/completion.sh" >>~/.bashrc
   source $install_dir/scripts/completion.sh
 
   log_success "Install cess mineradm success"
