@@ -12,11 +12,11 @@ node:
 ## set option: '--skip-chain' or '-s' to skip installing chain (mineradm install --skip-chain)
 ## if set option: --skip-chain, please set official chain in miner[].chainWsUrl or others chain you know
 chain:
-  ## the name of chain node
+  ## chain mode: rpcnode, the name of the rpc node
   name: "cess"
-  ## the port of chain node
+  ## the port of rpc node
   port: 30336
-  ## listen rpc service at port 9944
+  ## listen at port 9944
   rpcPort: 9944
 
 ## miners configurations  (multi miners mode)
@@ -77,3 +77,45 @@ miners:
     backupChainWsUrls: []
     # Bootstrap Nodes
     Boot: "_dnsaddr.boot-miner-testnet.cess.cloud"
+
+# miners monitor service
+watchdog:
+  # enable miners monitor or not
+  enable: true
+  # external: run with 0.0.0.0 or 127.0.0.1
+  external: true
+  # apiUrl: watchdog-web request this apiUrl to fetch data from watchdog: <my_public_ip:13081 or a domain>
+  apiUrl: ""
+  # watchdog server listen http port at: 13081
+  port: 13081
+  # the interval of query data from chain for each miner, 30 <= scrapeInterval <= 300
+  scrapeInterval: 60
+  hosts:
+    - ip: 127.0.0.1 # 127.x, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 is a private IP
+      # make sure docker daemon listen at 2375: https://docs.docker.com/config/daemon/remote-access/
+      port: 2375
+    # Configure remote access for Docker daemon in public network must use tls to make sure mnemonic safe
+    # set ca/crt/key path if the ip no belongs to [ 127.x, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 ]
+    - ip: 1.1.1.1 # 1.1.1.1 is a public IP
+      # make sure docker daemon tls listen at 2376: https://docs.docker.com/engine/security/protect-access/
+      port: 2376
+      # please make sure each file name is unique
+      ca_path: /etc/docker/tls/1.1.1.1-ca.pem
+      cert_path: /etc/docker/tls/1.1.1.1-cert.pem
+      key_path: /etc/docker/tls/1.1.1.1-key.pem
+  alert:
+    # enable alert or not
+    enable: false
+    # send webhook to alert someone
+    webhook:
+      - https://hooks.slack.com/services/XXXXXXXXX/XXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX
+      - https://discordapp.com/api/webhooks/XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+    # send email to alert someone
+    email:
+      smtp_endpoint: smtp.example.com
+      smtp_port: 80
+      smtp_account: myservice@example.com
+      smtp_password: my_pwd
+      receive_addr:
+        - example1@gmail.com
+        - example2@outlook.com
