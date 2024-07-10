@@ -62,7 +62,8 @@ install_dependencies() {
       exit 1
     fi
     if ! command_exists nc; then
-      yum install -y nmap-ncat
+      sudo yum install epel-release -y
+      sudo yum install nmap-ncat -y
     fi
     if ! command_exists bc; then
       yum install -y bc
@@ -196,6 +197,14 @@ install_mineradm() {
   chmod +x $install_dir/scripts/*.sh
   echo "source $install_dir/scripts/completion.sh" >>~/.bashrc
   source $install_dir/scripts/completion.sh
+
+  if ! enableDockerAPI; then
+    log_err "Fail to enable Docker API, try to enable it manually: https://docs.docker.com/config/daemon/remote-access/"
+    log_info "The monitor service: watchdog, can not be run if docker api is not enabled."
+    cat /lib/systemd/system/backup-docker.service > /lib/systemd/system/docker.service
+    sudo systemctl daemon-reload
+    sudo systemctl restart docker
+  fi
 
   log_success "Install cess mineradm success"
 }

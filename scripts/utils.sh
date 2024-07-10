@@ -62,6 +62,16 @@ backup_config() {
   log_info "Backup configuration at: /tmp/minerbkdir"
 }
 
+enableDockerAPI() {
+  #  https://docs.docker.com/config/daemon/remote-access/
+  log_info "Start to enable docker api, backup docker.service at /lib/systemd/system/backup-docker.service"
+  cp /lib/systemd/system/docker.service /lib/systemd/system/backup-docker.service
+  sudo sed -i 's/^ExecStart=.*/ExecStart=\/usr\/bin\/dockerd -H fd:\/\/ -H unix:\/\/\/var\/run\/docker.sock -H tcp:\/\/0.0.0.0:2375/' /lib/systemd/system/docker.service
+  sudo systemctl daemon-reload
+  sudo systemctl restart docker
+  log_info "Docker daemon listen at port: 2375"
+}
+
 check_disk_unit() {
   # $1: /mnt/cess_storage1
   # $2: g/t/p
