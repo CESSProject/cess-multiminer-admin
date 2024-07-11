@@ -82,10 +82,13 @@ config_generate() {
     mkdir -p $base_mode_path/chain/
   fi
   cp $build_dir/chain/* $base_mode_path/chain/
+  if [ ! -d $base_mode_path/watchdog/ ]; then
+    log_info "mkdir : $base_mode_path/watchdog/"
+    mkdir -p $base_mode_path/watchdog/
+  fi
+  cp $build_dir/watchdog/* $base_mode_path/watchdog/
 
   chown -R root:root $build_dir
-  #chmod -R 0600 $build_dir
-  #chmod 0600 $config_path
 
   split_miners_config
 
