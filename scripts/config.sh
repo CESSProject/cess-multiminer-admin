@@ -82,15 +82,20 @@ config_generate() {
     mkdir -p $base_mode_path/chain/
   fi
   cp $build_dir/chain/* $base_mode_path/chain/
-  if [ ! -d $base_mode_path/watchdog/ ]; then
-    log_info "mkdir : $base_mode_path/watchdog/"
-    mkdir -p $base_mode_path/watchdog/
-  fi
-  cp $build_dir/watchdog/* $base_mode_path/watchdog/
 
   chown -R root:root $build_dir
 
-  split_miners_config
+  split_miners_config # generate miners config
+
+  local enableWatchdogService=$(yq eval ".watchdog.enable" $config_path) # generate watchdog config or not
+  if [[ $enableWatchdogService == "true" ]]; then
+    if [ ! -d $base_mode_path/watchdog/ ]; then
+      log_info "mkdir : $base_mode_path/watchdog/"
+      mkdir -p $base_mode_path/watchdog/
+    fi
+    cp $build_dir/watchdog/* $base_mode_path/watchdog/
+    log_success "watchdog configuration generated at: $build_dir/watchdog/config.yaml"
+  fi
 
   log_success "docker-compose.yaml generated at: $compose_yaml"
 }
