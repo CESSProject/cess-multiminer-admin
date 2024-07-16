@@ -78,11 +78,11 @@ miners:
     # Bootstrap Nodes
     Boot: "_dnsaddr.boot-miner-testnet.cess.cloud"
 
-# miners monitor service
+# miners monitor service, send alert with email/webhook when miners is down or get punishment
 watchdog:
   # enable miners monitor or not
-  enable: true
-  # external: run with 0.0.0.0 or 127.0.0.1
+  enable: false
+  # external: server run with 0.0.0.0 or 127.0.0.1
   external: true
   # apiUrl: watchdog-web request this apiUrl to fetch data from watchdog: <my_public_ip:13081 or a domain>
   apiUrl: ""
@@ -90,6 +90,7 @@ watchdog:
   port: 13081
   # the interval of query data from chain for each miner, 30 <= scrapeInterval <= 300
   scrapeInterval: 60
+  # watchdog can scrape miners data from this hosts
   hosts:
     - ip: 127.0.0.1 # 127.x, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 is a private IP
       # make sure docker daemon listen at 2375: https://docs.docker.com/config/daemon/remote-access/
@@ -116,6 +117,6 @@ watchdog:
       smtp_port: 80
       smtp_account: myservice@example.com
       smtp_password: my_pwd
-      receive_addr:
+      receiver:
         - example1@gmail.com
         - example2@outlook.com
