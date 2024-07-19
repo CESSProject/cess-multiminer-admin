@@ -41,6 +41,13 @@ install() {
 
   docker compose -f $compose_yaml up -d $services
 
+  if [ "$(yq eval ".services.watchdog-web" $compose_yaml)" ]; then
+    if [ "$(yq eval ".services.watchdog-web.environment" $compose_yaml)" ]; then
+      local url=$(grep -oP "NEXT_PUBLIC_API_URL=\K.*" $compose_yaml | tr -d "'")
+      log_info "Storage monitor run at: $url"
+    fi
+  fi
+
   return $?
 }
 
@@ -145,7 +152,7 @@ miner_ops() {
   readarray -t volumes_array <<<"$volumes" # read array split with /n
   read -a names_array <<<"$miner_names"    # read array split with " "
   local miner_image="cesslab/cess-miner:$profile"
-  local -r cfg_arg="-c /opt/miner/config.yaml"  # read only
+  local -r cfg_arg="-c /opt/miner/config.yaml" # read only
 
   case "$1" in
   increase)
