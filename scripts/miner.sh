@@ -43,8 +43,7 @@ install() {
 
   if [ "$(yq eval ".services.watchdog-web" $compose_yaml)" ]; then
     if [ "$(yq eval ".services.watchdog-web.environment" $compose_yaml)" ]; then
-      local url=$(grep -oP "NEXT_PUBLIC_API_URL=\K.*" $compose_yaml | tr -d "'")
-      log_info "Storage monitor run at: $url"
+      log_info "Storage monitor run at: http://localhost:13080"
     fi
   fi
 
