@@ -6,7 +6,7 @@ node:
   # default chain url for miner, can be overwritten in miners[] as below
   chainWsUrl: "ws://127.0.0.1:9944/"
   # default backup chain urls for miner, can be overwritten in miners[] as below
-  backupChainWsUrls: ["wss://testnet-rpc.cess.cloud/ws/"]
+  backupChainWsUrls: ["wss://testnet-rpc.cess.network/ws/"]
 
 ## chain configurations
 ## set option: '--skip-chain' or '-s' to skip installing chain (mineradm install --skip-chain)
@@ -43,12 +43,12 @@ miners:
     # miner work at this path
     diskPath: "/mnt/cess_storage1"
     # The rpc endpoint of the chain
-    # `official chain: "wss://testnet-rpc.cess.cloud/ws/"`
+    # `official chain: "wss://testnet-rpc.cess.network/ws/"`
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
     # Priority tee list address
     # Bootstrap Nodes
-    Boot: "_dnsaddr.boot-miner-testnet.cess.cloud"
+    Boot: "_dnsaddr.boot-miner-testnet.cess.network"
 
   - name: "miner2"
     # P2P communication port, each port must be different
@@ -72,11 +72,11 @@ miners:
     # miner work at this path
     diskPath: "/mnt/cess_storage2"
     # The rpc endpoint of the chain
-    # `official chain: "wss://testnet-rpc.cess.cloud/ws/"`
+    # `official chain: "wss://testnet-rpc.cess.network/ws/"`
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
     # Bootstrap Nodes
-    Boot: "_dnsaddr.boot-miner-testnet.cess.cloud"
+    Boot: "_dnsaddr.boot-miner-testnet.cess.network"
 
 # miners monitor service, send alert with email/webhook when miners is down or get punishment
 watchdog:
