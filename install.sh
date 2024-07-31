@@ -48,6 +48,9 @@ install_dependencies() {
     if ! command_exists bc; then
       apt-get install -y bc
     fi
+    if ! command_exists dmidecode; then
+      apt install -y dmidecode
+    fi
 
   elif [ x"$DISTRO" == x"CentOS" ]; then
     log_info "------------Yum update--------------"
@@ -67,6 +70,9 @@ install_dependencies() {
     fi
     if ! command_exists bc; then
       yum install -y bc
+    fi
+    if ! command_exists dmidecode; then
+      yum install -y dmidecode
     fi
   fi
 
@@ -201,7 +207,7 @@ install_mineradm() {
   if ! enableDockerAPI; then
     log_err "Fail to enable Docker API, try to enable it manually: https://docs.docker.com/config/daemon/remote-access/"
     log_info "The monitor service: watchdog, can not be run if docker api is not enabled."
-    cat /lib/systemd/system/backup-docker.service > /lib/systemd/system/docker.service
+    cat /lib/systemd/system/backup-docker.service >/lib/systemd/system/docker.service
     sudo systemctl daemon-reload
     sudo systemctl restart docker
   fi

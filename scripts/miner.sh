@@ -40,10 +40,11 @@ install() {
   fi
 
   docker compose -f $compose_yaml up -d $services
-
-  if [ "$(yq eval ".services.watchdog-web" $compose_yaml)" ]; then
-    if [ "$(yq eval ".services.watchdog-web.environment" $compose_yaml)" ]; then
-      log_info "Storage monitor run at: http://localhost:13080"
+  if [ "$(yq eval ".watchdog.enable" $config_path)" == "true" ]; then
+    if [ "$(yq eval ".services.watchdog-web" $compose_yaml)" ]; then
+      if [ "$(yq eval ".services.watchdog-web.environment" $compose_yaml)" ]; then
+        log_info "Storage monitor run at: http://localhost:13080"
+      fi
     fi
   fi
 
