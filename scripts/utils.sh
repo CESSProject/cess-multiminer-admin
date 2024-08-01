@@ -1,6 +1,7 @@
 #!/bin/bash
 
-mineradm_version="v0.0.1"
+mineradm_version="v0.0.9"
+network_version="testnet-v0.7.7"
 skip_chain="false"
 base_dir=/opt/cess/mineradm
 script_dir=$base_dir/scripts

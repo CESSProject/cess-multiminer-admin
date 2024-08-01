@@ -3,6 +3,7 @@
 source /opt/cess/mineradm/scripts/utils.sh
 
 version() {
+  printf "network version: %s\n" "$network_version"
   printf "mineradm version: %s\n" "$mineradm_version"
   printf "Mode: %s\n" ${mode}
   printf "Profile: %s\n" ${profile}

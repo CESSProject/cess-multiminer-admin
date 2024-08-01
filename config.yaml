@@ -47,6 +47,9 @@ miners:
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
     # Priority tee list address
+    TeeList:
+      - 127.0.0.1:8080
+      - 127.0.0.1:8081
     # Bootstrap Nodes
     Boot: "_dnsaddr.boot-miner-testnet.cess.network"
 
@@ -75,6 +78,10 @@ miners:
     # `official chain: "wss://testnet-rpc.cess.network/ws/"`
     chainWsUrl: "ws://127.0.0.1:9944/"
     backupChainWsUrls: []
+    # Priority tee list address
+    TeeList:
+      - 127.0.0.1:8080
+      - 127.0.0.1:8081
     # Bootstrap Nodes
     Boot: "_dnsaddr.boot-miner-testnet.cess.network"
 

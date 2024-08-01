@@ -111,7 +111,7 @@ pullimg() {
 }
 
 status() {
-  docker ps -a --filter "label=com.docker.compose.project=cess-${mode}" --format 'table {{.Names}}\t{{.Status}}' | sort
+  docker ps -a --filter "label=com.docker.compose.project=cess-${mode}" --format 'table {{.Names}}\t{{.Status}}'
 }
 
 purge() {
@@ -355,12 +355,8 @@ miner_ops() {
       if ! local res=$($cmd $1 $cfg_arg); then
         log_err "${names_array[$i]}: Some exceptions have occurred when request on chain"
       else
-        if echo "$res" | grep -q -E "!!|XX"; then
-          log_err "${names_array[$i]}: Some exceptions have occurred when request on chain"
-        else
-          log_success "-----------------------------------${names_array[$i]}-----------------------------------"
-          log_info "$res"
-        fi
+        log_success "-----------------------------------${names_array[$i]}-----------------------------------"
+        log_info "$res"
       fi
       echo
     done
