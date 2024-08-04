@@ -21,4 +21,4 @@ $ sudo mineradm install
 
 # Docs
 
-- Docs: https://doc.cess.network/core/storage-miner/multi-miner
+- Docs: https://doc.cess.network/cess-miners/storage-miner/multi-miner
