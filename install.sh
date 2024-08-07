@@ -39,8 +39,8 @@ install_dependencies() {
 
     log_info "------------Install dependencies--------------"
     if ! apt-get install -y git jq curl wget net-tools; then
-      log_err "Install libs failed"
-      exit 1
+      log_err "Failed to install some libs "
+      log_info "You can install it manually and ignore this error log"
     fi
     if ! command_exists nc; then
       apt-get install -y netcat
@@ -61,8 +61,8 @@ install_dependencies() {
     log_info "------------Install dependencies--------------"
 
     if ! yum install -y git jq curl wget net-tools; then
-      log_err "Install libs failed"
-      exit 1
+      log_err "Failed to install some libs "
+      log_info "You can install it manually and ignore this error log"
     fi
     if ! command_exists nc; then
       sudo yum install epel-release -y
@@ -112,7 +112,7 @@ install_dependencies() {
     # install or update docker
     if ! curl -fsSL https://get.docker.com | bash; then
       log_err "Install docker failed"
-      exit 1
+      log_info "You can install docker manually and ignore this error log"
     fi
   fi
 
@@ -122,7 +122,7 @@ install_dependencies() {
       add_docker_ubuntu_repo
       if ! apt-get install -y docker-compose-plugin; then
         log_err "Install docker-compose-plugin failed"
-        exit 1
+        log_info "You can install docker compose manually and ignore this error log"
       fi
     fi
   elif [ x"$DISTRO" == x"CentOS" ]; then
@@ -130,7 +130,7 @@ install_dependencies() {
       add_docker_centos_repo
       if ! yum install -y docker-compose-plugin; then
         log_err "Install docker-compose-plugin failed"
-        exit 1
+        log_info "You can install docker compose manually and ignore this error log"
       fi
     fi
   fi
