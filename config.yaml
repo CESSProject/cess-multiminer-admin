@@ -4,9 +4,7 @@ node:
   ## the profile of node: devnet/testnet/mainnet
   profile: "testnet"
   # default chain url for miner, can be overwritten in miners[] as below
-  chainWsUrl: "ws://127.0.0.1:9944/"
-  # default backup chain urls for miner, can be overwritten in miners[] as below
-  backupChainWsUrls: ["wss://testnet-rpc.cess.network/ws/"]
+  chainWsUrl: "ws://127.0.0.1:9944/ws/"
 
 ## chain configurations
 ## set option: '--skip-chain' or '-s' to skip installing chain (mineradm install --skip-chain)
@@ -44,7 +42,7 @@ miners:
     diskPath: "/mnt/cess_storage1"
     # The rpc endpoint of the chain
     # `official chain: "wss://testnet-rpc.cess.network/ws/"`
-    chainWsUrl: "ws://127.0.0.1:9944/"
+    chainWsUrl: "ws://127.0.0.1:9944/ws/"
     backupChainWsUrls: []
     # Priority tee list address
     TeeList:
@@ -76,7 +74,7 @@ miners:
     diskPath: "/mnt/cess_storage2"
     # The rpc endpoint of the chain
     # `official chain: "wss://testnet-rpc.cess.network/ws/"`
-    chainWsUrl: "ws://127.0.0.1:9944/"
+    chainWsUrl: "ws://127.0.0.1:9944/ws/"
     backupChainWsUrls: []
     # Priority tee list address
     TeeList:
