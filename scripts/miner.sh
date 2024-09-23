@@ -130,7 +130,7 @@ purge() {
 
 purge_data() {
   stop chain
-  if rm -rf /opt/cess/data/$mode/*; then
+  if rm -rf /opt/cess/config/$mode/*; then
     log_success "purge data successfully"
   else
     log_err "Can not remove data in: /opt/cess/data/$mode/"
