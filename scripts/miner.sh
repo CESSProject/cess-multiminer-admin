@@ -174,7 +174,7 @@ miner_ops() {
           log_err "$3: Increase Stake Failed"
           exit 1
         else
-          log_success "${names_array[$i]}: $3 TCESS has been increased successfully"
+          log_success "$3: $4 TCESS has been increased successfully"
           exit 0
         fi
       fi
