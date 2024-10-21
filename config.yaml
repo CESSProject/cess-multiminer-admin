@@ -20,7 +20,8 @@ chain:
 ## miners configurations  (multi miners mode)
 miners:
   - name: "miner1"
-    # P2P communication port, each port must be different
+    # Use this endpoint to receive/send file, can be a domain or ip:port, default value: hostPublicIp:port
+    apiendpoint: ""
     port: 15001
     # Maximum space used in each miner, the unit is GiB
     # The declaration space on chain is auto set by the value of `UseSpace after round up to the closest TB` when the miner first run
@@ -32,9 +33,9 @@ miners:
     # earnings account
     earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
     # Staking account
-    # If you fill in the staking account, the staking will be paid by the staking account,
-    # otherwise the staking will be paid by the earningsAcc.
-    stakingAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    # If you fill in the staking account, the staking will be paid by the staking account you set,
+    # otherwise the staking will be paid by the signatureAcc(mnemonic).
+    stakingAcc: ""
     # Signature account mnemonic
     # each miner's mnemonic should be different
     mnemonic: "aaaaa bbbbb ccccc ddddd eeeee fffff ggggg hhhhh iiiii jjjjj kkkkk lllll"
@@ -48,40 +49,25 @@ miners:
     TeeList:
       - 127.0.0.1:8080
       - 127.0.0.1:8081
-    # Bootstrap Nodes
-    Boot: "_dnsaddr.boot-miner-testnet.cess.network"
+    # Default 12 second for transaction with chain
+    Timeout: 12
 
   - name: "miner2"
-    # P2P communication port, each port must be different
     port: 15002
-    # Maximum space used in each miner, the unit is GiB
-    # The declaration space on chain is auto set by the value of `UseSpace after round up to the closest TB` when the miner first run
-    # If set UseSpace to 2100, that means declare 3 TiB space on the chain
-    # If set UseSpace to 300, that means declare 1 TiB space on the chain
+    apiendpoint: ""
     UseSpace: 1000
-    # Number of cpu's processor used
     UseCpu: 2
-    # earnings account
     earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    # Staking account
-    # If you fill in the staking account, the staking will be paid by the staking account,
-    # otherwise the staking will be paid by the earningsAcc.
-    stakingAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    # Signature account mnemonic
-    # each miner's mnemonic should be different
+    stakingAcc: ""
     mnemonic: "lllll kkkkk jjjjj iiiii hhhhh ggggg fffff eeeee ddddd ccccc bbbbb aaaaa"
-    # miner work at this path
     diskPath: "/mnt/cess_storage2"
-    # The rpc endpoint of the chain
-    # `official chain: "wss://testnet-rpc.cess.network/ws/"`
     chainWsUrl: "ws://127.0.0.1:9944/ws/"
     backupChainWsUrls: []
-    # Priority tee list address
     TeeList:
       - 127.0.0.1:8080
       - 127.0.0.1:8081
-    # Bootstrap Nodes
-    Boot: "_dnsaddr.boot-miner-testnet.cess.network"
+    # Default 12 second for transaction with chain
+    Timeout: 12
 
 # miners monitor service, send alert with email/webhook when miners is down or get punishment
 watchdog:
