@@ -198,7 +198,7 @@ miner_ops() {
             log_info "Please make sure that the miners have enough TCESS in signatureAcc and each signatureAcc is the same as its stakingAcc"
             log_err "${names_array[$i]}: Increase Stake Failed"
           else
-            log_success "${names_array[$i]}: Increase Stake To $3"
+            log_success "${names_array[$i]}: Increase Stake: $3 Successfully"
           fi
         fi
         echo
