@@ -57,9 +57,9 @@ miners:
     port: 15002
     UseSpace: 1000
     UseCpu: 2
-    earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    earningsAcc: "cXxxx"
     stakingAcc: ""
-    mnemonic: "lllll kkkkk jjjjj iiiii hhhhh ggggg fffff eeeee ddddd ccccc bbbbb aaaaa"
+    mnemonic: "xxx"
     diskPath: "/mnt/cess_storage2"
     chainWsUrl: "ws://127.0.0.1:9944/ws/"
     backupChainWsUrls: []

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mineradm_version="v0.1.2"
+mineradm_version="v0.1.3"
 network_version="testnet-v0.7.7"
 skip_chain="false"
 base_dir=/opt/cess/mineradm
