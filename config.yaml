@@ -42,8 +42,8 @@ miners:
     # miner work at this path
     diskPath: "/mnt/cess_storage1"
     # The rpc endpoint of the chain
-    # `official chain: "wss://testnet-rpc.cess.network/ws/"`
-    chainWsUrl: "ws://127.0.0.1:9944/ws/"
+    # `official chain: "wss://testnet-rpc.cess.network"`
+    chainWsUrl: "ws://127.0.0.1:9944"
     backupChainWsUrls: []
     # Priority tee list address
     TeeList:
@@ -53,8 +53,8 @@ miners:
     Timeout: 12
 
   - name: "miner2"
-    port: 15002
     apiendpoint: ""
+    port: 15002
     UseSpace: 1000
     UseCpu: 2
     earningsAcc: "cXxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
