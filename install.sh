@@ -89,9 +89,14 @@ install_dependencies() {
     fi
     if [ $need_install_yq -eq 1 ]; then
       echo "Begin download yq ..."
-      if wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_amd64 -O /tmp/yq && mv /tmp/yq /usr/bin/yq && chmod +x /usr/bin/yq; then
-        log_success "yq is successfully installed!"
+      if [ x"$ARCH" == x"x86_64" ]; then
+        wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_amd64 -O /tmp/yq && mv /tmp/yq /usr/bin/yq && chmod +x /usr/bin/yq
         yq -V
+        log_success "yq is successfully installed!"
+      else
+        wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_arm64 -O /tmp/yq && mv /tmp/yq /usr/bin/yq && chmod +x /usr/bin/yq
+        yq -V
+        log_success "yq is successfully installed!"
       fi
     fi
   done
@@ -248,6 +253,7 @@ while true; do
 done
 
 ensure_root
+get_system_arch
 get_packageManager_type
 
 if [ x"$PM" != x"yum" ] && [ x"$PM" != x"apt" ]; then

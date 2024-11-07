@@ -20,6 +20,7 @@ ram_req=8
 PM=""
 # centos ubuntu debian redhat ...
 DISTRO=""
+ARCH="x86_64"
 
 each_miner_ram_req=4   # 4GB RAM for each miner at least
 each_miner_cpu_req=1   # 1 core for each miner at least
@@ -212,6 +213,19 @@ get_packageManager_type() {
     return 1
   fi
   return 0
+}
+
+get_system_arch() {
+  local arch=$(uname -m)
+  if [ x"$arch" == x"x86_64" ]; then
+    ARCH="x86_64"
+  elif [ x"$arch" == x"aarch64" ]; then
+    ARCH="aarch64"
+  else
+    log_info "Only support x86_64 or aarch64"
+    log_err "Unsupported system architecture: $arch"
+    exit 1
+  fi
 }
 
 set_profile() {
