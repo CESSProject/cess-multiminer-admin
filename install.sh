@@ -44,7 +44,8 @@ install_dependencies() {
       log_info "Can install it manually and ignore this error log"
     fi
     if ! command_exists nc; then
-      apt-get install -y netcat
+      # netcat-openbsd / netcat-traditional / netcat
+      apt-get install -y netcat-openbsd
     fi
     if ! command_exists bc; then
       apt-get install -y bc
