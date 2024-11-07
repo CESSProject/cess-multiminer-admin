@@ -30,7 +30,7 @@ install_dependencies() {
     return 0
   fi
 
-  if [ x"$DISTRO" == x"Ubuntu" ]; then
+  if [ x"$PM" == x"apt" ]; then
     log_info "------------Apt update--------------"
     if ! apt-get update; then
       log_info "Please check your network or apt source and then try again"
@@ -53,7 +53,7 @@ install_dependencies() {
       apt install -y dmidecode
     fi
 
-  elif [ x"$DISTRO" == x"CentOS" ]; then
+  elif [ x"$PM" == x"yum" ]; then
     log_info "------------Yum update--------------"
     if ! yum update; then
       log_info "Please check your network or yum source and then try again"
@@ -119,7 +119,7 @@ install_dependencies() {
   fi
 
   # check docker-compose-plugin
-  if [ x"$DISTRO" == x"Ubuntu" ]; then
+  if [ x"$PM" == x"apt" ]; then
     if ! dpkg -l | grep -q docker-compose-plugin; then
       add_docker_ubuntu_repo
       if ! apt-get install -y docker-compose-plugin; then
@@ -127,7 +127,7 @@ install_dependencies() {
         log_info "Can install docker compose manually and ignore this error log"
       fi
     fi
-  elif [ x"$DISTRO" == x"CentOS" ]; then
+  elif [ x"$PM" == x"yum" ]; then
     if ! rpm -qa | grep -q docker-compose-plugin; then
       add_docker_centos_repo
       if ! yum install -y docker-compose-plugin; then
@@ -247,10 +247,10 @@ while true; do
 done
 
 ensure_root
-get_distro_name
+get_packageManager_type
 
-if [ x"$DISTRO" != x"Ubuntu" ] && [ x"$DISTRO" != x"CentOS" ]; then
-  log_err "Only support Ubuntu or CentOS currently"
+if [ x"$PM" != x"yum" ] && [ x"$PM" != x"apt" ]; then
+  log_err "Only support package manager: yum or apt"
   exit 1
 fi
 

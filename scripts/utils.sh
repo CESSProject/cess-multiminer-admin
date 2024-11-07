@@ -185,7 +185,7 @@ ensure_root() {
   fi
 }
 
-get_distro_name() {
+get_packageManager_type() {
   if grep -Eqi "Ubuntu" /etc/issue || grep -Eq "Ubuntu" /etc/*-release; then
     DISTRO='Ubuntu'
     PM='apt'
