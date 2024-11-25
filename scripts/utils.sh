@@ -64,7 +64,7 @@ backup_config() {
   log_info "Backup configuration at: /tmp/minerbkdir"
 }
 
-enableDockerAPI() {
+enable_docker_api() {
   local docker_api_port=$(ss -tl | grep -e 2375 -e 2376)
   if [ -n "$docker_api_port" ]; then
     return
@@ -75,7 +75,7 @@ enableDockerAPI() {
   sudo sed -i 's/^ExecStart=.*/ExecStart=\/usr\/bin\/dockerd -H fd:\/\/ -H unix:\/\/\/var\/run\/docker.sock -H tcp:\/\/127.0.0.1:2375/' /lib/systemd/system/docker.service
   sudo systemctl daemon-reload
   sudo systemctl restart docker
-  log_info "Docker daemon listen at port: 2375"
+  log_info "Docker daemon listen at port: 127.0.0.1:2375"
 }
 
 check_disk_unit() {

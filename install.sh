@@ -212,7 +212,7 @@ install_mineradm() {
   echo "source $install_dir/scripts/completion.sh" >>~/.bashrc
   source $install_dir/scripts/completion.sh
 
-  if ! enableDockerAPI; then
+  if ! enable_docker_api; then
     log_err "Fail to enable Docker API, try to enable it manually: https://docs.docker.com/config/daemon/remote-access/"
     log_info "The monitor service: watchdog, can not be run if docker api is not enabled."
     cat /lib/systemd/system/backup-docker.service >/lib/systemd/system/docker.service
