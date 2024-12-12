@@ -230,26 +230,27 @@ get_system_arch() {
 
 set_profile() {
   local to_set=$1
+  local current_profile="$(yq eval ".node.profile" $config_path)"
   if [ -z $to_set ]; then
-    log_info "current profile: $profile"
+    log_info "current profile value: $current_profile"
     return 0
   fi
-  if [ x"$to_set" == x"devnet" ] || [ x"$to_set" == x"testnet" ] || [ x"$to_set" == x"mainnet" ]; then
+  if [ x"$to_set" == x"devnet" ] || [ x"$to_set" == x"testnet" ] || [ x"$to_set" == x"premainnet" ] || [ x"$to_set" == x"mainnet" ]; then
     yq -i eval ".node.profile=\"$to_set\"" $config_path
-    log_success "set profile to $to_set"
+    log_success "set profile to: $to_set"
     return 0
   fi
-  log_err "Invalid profile value in: devnet/testnet/mainnet"
+  log_err "Invalid profile value in: devnet/testnet/premainnet/mainnet"
   return 1
 }
 
 load_profile() {
-  local p="$(yq eval ".node.profile" $config_path)"
-  if [ x"$p" == x"devnet" ] || [ x"$p" == x"testnet" ] || [ x"$p" == x"mainnet" ]; then
-    profile=$p
+  local current_profile="$(yq eval ".node.profile" $config_path)"
+  if [ x"$current_profile" == x"devnet" ] || [ x"$current_profile" == x"testnet" ] || [ x"$current_profile" == x"premainnet" ] || [ x"$current_profile" == x"mainnet" ]; then
+    profile=$current_profile
     return 0
   fi
-  log_info "the profile: $p of config file is invalid, use default value: $profile"
+  log_err "current profile value: $current_profile in config file is invalid, use default value: $profile"
   return 1
 }
 

@@ -516,7 +516,7 @@ Usage:
        option:
            -s | show                            show configurations
            -g | generate                        generate configuration by default file: /opt/cess/mineradm/config.yaml
-    profile {devnet|testnet|mainnet}            switch CESS network profile, testnet for default
+    profile                                     switch CESS network profile {devnet|testnet|premainnet|mainnet}, testnet for default
     tools                                       use 'mineradm tools help' for more details
        option:
            space-info                           show information about miner disk
