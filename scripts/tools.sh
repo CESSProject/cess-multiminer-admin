@@ -55,11 +55,11 @@ set() {
         if $cmd "stat" $cfg_arg >$tmp_file; then
           # transfer current_used_num to unit: GiB
           local current_used_num=$(get_current_validated_space $tmp_file)
-          local now_use_space_config=$(yq eval ".miners[$i].UseSpace" $config_path)
-          local now_disk_path_config=$(yq eval ".miners[$i].diskPath" $config_path)
-          if [ $2 -gt $now_use_space_config ]; then # increase UseSpace operation
+          local cur_use_space_config=$(yq eval ".miners[$i].UseSpace" $config_path)
+          local cur_disk_path_config=$(yq eval ".miners[$i].diskPath" $config_path)
+          if [ $2 -gt $cur_use_space_config ]; then # increase UseSpace operation
             # get current disk total size
-            local disk_size=$(get_disk_size $now_disk_path_config)
+            local disk_size=$(get_disk_size $cur_disk_path_config)
             if [ $2 -gt $disk_size ]; then # request bigger than actual disk size: insufficient disk space
               log_err "Current disk only $disk_size GiB in total, but set $2 for UseSpace, ${names_array[$i]} increase UseSpace operation failed"
             else
@@ -68,12 +68,12 @@ set() {
           else # decrease UseSpace operation
             # 88.88 > 8.88, return 1
             # 88.88 > 188.88, return 0
-            local result1=$(echo "$now_use_space_config > $current_used_num" | bc)
+            local result1=$(echo "$cur_use_space_config > $current_used_num" | bc)
             local result2=$(echo "$2 > $current_used_num" | bc)
             if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
               yq -i eval ".miners[$i].UseSpace=$2" $config_path
             else
-              log_err "${names_array[$i]} has validated $current_used_num GiB on chain currently, useSpace cant less than validated space, change useSpace from $now_use_space_config to $2 failed"
+              log_err "${names_array[$i]} has validated $current_used_num GiB on chain currently, useSpace cant less than validated space, change useSpace from $cur_use_space_config to $2 failed"
             fi
           fi
         else
@@ -111,11 +111,11 @@ set() {
 
       if $cmd "stat" $cfg_arg >$tmp_file; then
         local current_used_num=$(get_current_validated_space $tmp_file)
-        local now_use_space_config=$(yq eval ".miners[$index].UseSpace" $config_path)
-        local now_disk_path_config=$(yq eval ".miners[$index].diskPath" $config_path)
-        if [ $3 -gt $now_use_space_config ]; then # increase operation
+        local cur_use_space_config=$(yq eval ".miners[$index].UseSpace" $config_path)
+        local cur_disk_path_config=$(yq eval ".miners[$index].diskPath" $config_path)
+        if [ $3 -gt $cur_use_space_config ]; then # increase operation
           # get current disk total size
-          local disk_size=$(get_disk_size $now_disk_path_config)
+          local disk_size=$(get_disk_size $cur_disk_path_config)
           if [ $3 -gt $disk_size ]; then # request bigger than actual disk size: insufficient disk space
             log_err "Current disk only $disk_size GiB in total, but set $3 for UseSpace"
             rm -f $tmp_file
@@ -124,12 +124,12 @@ set() {
             yq -i eval ".miners[$index].UseSpace=$3" $config_path
           fi
         else # decrease operation
-          local result1=$(echo "$now_use_space_config > $current_used_num" | bc)
+          local result1=$(echo "$cur_use_space_config > $current_used_num" | bc)
           local result2=$(echo "$3 > $current_used_num" | bc)
           if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
             yq -i eval ".miners[$index].UseSpace=$3" $config_path
           else
-            log_err "$2 has validated $current_used_num GB on chain currently, useSpace cant less than validated space, change useSpace from $now_use_space_config to $3 failed"
+            log_err "$2 has validated $current_used_num GB on chain currently, useSpace cant less than validated space, change useSpace from $cur_use_space_config to $3 failed"
             rm -f $tmp_file
             exit 1
           fi
