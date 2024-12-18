@@ -43,6 +43,14 @@ function log_err() {
   echo_c 35 "[ERROR] $1"
 }
 
+# https://github.com/CESSProject/cess-nodeadm/pull/54/commits/82c3eaebba362503df25a7d5cfb35199cf01b604
+patch_wasm_override_if_testnet() {
+    if [[ $profile != "testnet" ]]; then
+        return 1
+    fi
+    yq -i eval ".chain.extraCmdArgs=\"--wasm-runtime-overrides /opt/cess/wasms\"" $config_path
+}
+
 backup_config() {
   local disk_path=$(yq eval ".miners[].diskPath" $config_path | xargs)
   read -a disk_path_arr <<<"$disk_path"
