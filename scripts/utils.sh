@@ -422,7 +422,7 @@ is_sminer_disk_satisfied() {
       exit 1
     fi
 
-    local size_value=$(df -B1G "$path" | awk 'NR==2 {print $4}')
+    local size_value=$(df -B1G "$path" | awk 'NR==2 {print $2}')
 
     if [ -z "$size_value" ]; then
       log_err "Failed to retrieve disk size for path: $path"
@@ -462,7 +462,7 @@ is_sminer_workpaths_valid() {
       exit 1
     fi
 
-    local cur_avail=$(df -B1G "${path_arr[$i]}" | awk 'NR==2{print $4}') # Get available space in GB
+    local cur_avail=$(df -B1G "${path_arr[$i]}" | awk 'NR==2{print $2}') # Get available space in GB
 
     result=$(echo "$cur_avail < ${space_arr[$i]}" | bc)
     if [ "$result" -eq 1 ]; then
