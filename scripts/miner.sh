@@ -24,7 +24,7 @@ install() {
   is_ram_satisfied
 
   # disk request in config.yaml must less than hardware-disk
-  is_disk_satisfied
+  is_sminer_disk_satisfied
 
   # install services with (chain)rpcnode or not
   local services

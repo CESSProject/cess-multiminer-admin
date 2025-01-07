@@ -54,7 +54,7 @@ set() {
         local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
         if $cmd "stat" $cfg_arg >$tmp_file; then
           # transfer current_used_num to unit: GiB
-          local current_used_num=$(get_current_validated_space $tmp_file)
+          local current_used_num=$(get_current_sminer_validated_space $tmp_file)
           local cur_use_space_config=$(yq eval ".miners[$i].UseSpace" $config_path)
           local cur_disk_path_config=$(yq eval ".miners[$i].diskPath" $config_path)
           if [ $2 -gt $cur_use_space_config ]; then # increase UseSpace operation
@@ -81,7 +81,7 @@ set() {
         fi
         rm -f $tmp_file
       done
-      backup_config
+      backup_sminer_config
       config_generate
       mineradm down $miner_names
       sleep 3
@@ -110,7 +110,7 @@ set() {
       local cmd=$(gen_miner_cmd $2 $miner_image)
 
       if $cmd "stat" $cfg_arg >$tmp_file; then
-        local current_used_num=$(get_current_validated_space $tmp_file)
+        local current_used_num=$(get_current_sminer_validated_space $tmp_file)
         local cur_use_space_config=$(yq eval ".miners[$index].UseSpace" $config_path)
         local cur_disk_path_config=$(yq eval ".miners[$index].diskPath" $config_path)
         if [ $3 -gt $cur_use_space_config ]; then # increase operation
@@ -134,7 +134,7 @@ set() {
             exit 1
           fi
         fi
-        backup_config
+        backup_sminer_config
         config_generate
         mineradm down $2
         sleep 3

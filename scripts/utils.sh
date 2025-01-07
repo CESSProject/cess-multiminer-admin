@@ -45,13 +45,13 @@ function log_err() {
 
 # https://github.com/CESSProject/cess-nodeadm/pull/54/commits/82c3eaebba362503df25a7d5cfb35199cf01b604
 patch_wasm_override_if_testnet() {
-    if [[ $profile != "testnet" ]]; then
-        return 1
-    fi
-    yq -i eval ".chain.extraCmdArgs=\"--wasm-runtime-overrides /opt/cess/wasms\"" $config_path
+  if [[ $profile != "testnet" ]]; then
+    return 1
+  fi
+  yq -i eval ".chain.extraCmdArgs=\"--wasm-runtime-overrides /opt/cess/wasms\"" $config_path
 }
 
-backup_config() {
+backup_sminer_config() {
   local disk_path=$(yq eval ".miners[].diskPath" $config_path | xargs)
   read -a disk_path_arr <<<"$disk_path"
   if [ ! -d /tmp/minerbkdir ]; then
@@ -94,7 +94,7 @@ check_disk_unit() {
   return $?
 }
 
-get_current_validated_space() {
+get_current_sminer_validated_space() {
   # $1 is a text file
   local current_used_num=$(grep -i "validated" $1 | cut -d '|' -f 3 | awk '{print $1}')
   local current_used_unit=$(grep -i "validated" $1 | cut -d '|' -f 3 | awk '{print $2}')
@@ -116,11 +116,16 @@ get_current_validated_space() {
 
 get_disk_size() {
   # $1: /mnt/cess_storage1
+  if [ ! -d "$1" ]; then
+    log_err "Directory does not exist: $1"
+    exit 1
+  fi
   local disk_size=$(df -h "$1" | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
   if check_disk_unit $1 "g"; then
     disk_size=$disk_size
   elif check_disk_unit $1 "t"; then
     disk_size=$(echo "scale=3; $disk_size * 1024" | bc)
+  # maybe pb level disk can be used in future
   elif check_disk_unit $1 "p"; then
     disk_size=$(echo "scale=3; $disk_size * 1024 * 1024" | bc)
   fi
@@ -311,7 +316,7 @@ get_miners_num() {
 
 is_cfgfile_valid() {
   if [ ! -f "$config_path" ]; then
-    log_err "ConfigFileNotFoundException: $config_path do not exist"
+    log_err "ConfigFileNotFoundException: $config_path does not exist"
     exit 1
   fi
 
@@ -347,16 +352,23 @@ is_base_hardware_satisfied() {
 
 is_processors_satisfied() {
   local miner_num=$(get_miners_num)
-  local basic_miners_cpu_need=$(($miner_num * $each_miner_cpu_req))
-  local basic_rpcnode_cpu_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_cpu_req" || echo "0")
-  local miners_cpu_req_in_cfg=$(yq eval '.miners[].UseCpu' $config_path | xargs | awk '{ sum = 0; for (i = 1; i <= NF; i++) sum += $i; print sum }')
-  local basic_cpu_req=$([ $skip_chain == "false" ] && echo $(($basic_miners_cpu_need + $basic_rpcnode_cpu_need)) || echo $basic_miners_cpu_need)
-  local actual_cpu_req=$([ $skip_chain == "false" ] && echo $(($miners_cpu_req_in_cfg + $basic_rpcnode_cpu_need)) || echo $basic_miners_cpu_need)
-
   local cur_processors=$(get_cur_processors)
 
+  # Calculate basic CPU requirements
+  local basic_miners_cpu_need=$(($miner_num * $each_miner_cpu_req))
+  local basic_rpcnode_cpu_need=0
+  if [[ $skip_chain == "false" ]]; then
+    basic_rpcnode_cpu_need=$each_rpcnode_cpu_req
+  fi
+  local basic_cpu_req=$(($basic_miners_cpu_need + $basic_rpcnode_cpu_need))
+
+  # Calculate actual CPU requirements
+  local miners_cpu_req_in_cfg=$(yq eval '.miners[].UseCpu' $config_path | xargs | awk '{ sum = 0; for (i = 1; i <= NF; i++) sum += $i; print sum }')
+  local actual_cpu_req=$(($miners_cpu_req_in_cfg + $basic_rpcnode_cpu_need))
+
+  # Validate CPU requirements
   if [ $basic_cpu_req -gt $cur_processors ]; then
-    log_info "Each miner request $each_miner_cpu_req processors at least, each chain request $each_rpcnode_cpu_req processors at least"
+    log_info "Each miner node request $each_miner_cpu_req processors at least, each chain node request $each_rpcnode_cpu_req processors at least"
     log_info "Basic installation request: $basic_cpu_req processors in total, but $cur_processors in current"
     log_info "Run too much storage node might make your server overload"
     log_err "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
@@ -374,11 +386,13 @@ is_ram_satisfied() {
   local miner_num=$(get_miners_num)
 
   local basic_miners_ram_need=$(($miner_num * $each_miner_ram_req))
+  local basic_rpcnode_ram_need=0
 
-  local basic_rpcnode_ram_need=$([ $skip_chain == "false" ] && echo "$each_rpcnode_ram_req" || echo "0")
+  if [[ $skip_chain == "false" ]]; then
+    basic_rpcnode_ram_need=$each_rpcnode_ram_req
+  fi
 
-  local total_ram_req=$([ $skip_chain == "false" ] && echo $(($basic_miners_ram_need + $basic_rpcnode_ram_need)) || echo $basic_miners_ram_need)
-
+  local total_ram_req=$(($basic_miners_ram_need + $basic_rpcnode_ram_need))
   local cur_ram=$(get_cur_ram)
 
   if [ $total_ram_req -gt $cur_ram ]; then
@@ -390,9 +404,10 @@ is_ram_satisfied() {
   fi
 }
 
-is_disk_satisfied() {
-  local diskPath=$(yq eval '(.miners | unique_by(.diskPath)) | .[].diskPath' $config_path)
-  local useSpace=$(yq eval '(.miners[].UseSpace' $config_path)
+is_sminer_disk_satisfied() {
+  local diskPath useSpace
+  diskPath=$(yq eval '(.miners | unique_by(.diskPath)) | .[].diskPath' "$config_path")
+  useSpace=$(yq eval '.miners[].UseSpace' "$config_path")
 
   readarray -t diskPath_arr <<<"$diskPath"
   readarray -t useSpace_arr <<<"$useSpace"
@@ -400,42 +415,55 @@ is_disk_satisfied() {
   local total_avail=0
   local total_req=0
 
-  for i in "${!diskPath_arr[@]}"; do
-    local path_i_size=$(df -h "${diskPath_arr[$i]}" | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
-    if df -h "${diskPath_arr[$i]}" | awk '{print $2}' | tail -n 1 | grep -i "t" >/dev/null; then
-      path_i_size=$(echo "scale=3; $path_i_size * 1024" | bc)
+  # Calculate total available disk space
+  for path in "${diskPath_arr[@]}"; do
+    if [ ! -d "$path" ]; then
+      log_err "Directory does not exist: $path"
+      exit 1
     fi
-    total_avail=$(echo "$total_avail + $path_i_size" | bc)
+
+    local size_value=$(df -B1G "$path" | awk 'NR==2 {print $4}')
+
+    if [ -z "$size_value" ]; then
+      log_err "Failed to retrieve disk size for path: $path"
+      exit 1
+    fi
+
+    total_avail=$(echo "$total_avail + $size_value" | bc)
   done
 
-  for i in "${!useSpace_arr[@]}"; do
-    total_req=$(echo "$total_req + ${useSpace_arr[$i]}" | bc)
+  # Calculate total required disk space
+  for space in "${useSpace_arr[@]}"; do
+    if ! is_num "$space"; then
+      log_err "Invalid UseSpace value: $space"
+      exit 1
+    fi
+    total_req=$(echo "$total_req + $space" | bc)
   done
 
-  result=$(echo "$total_avail < $total_req" | bc)
-
-  if [ "$result" -eq 1 ]; then
-    log_info "Only $total_avail GB available in $(echo "$diskPath" | tr "\n" " "), but set $total_req GB UseSpace in total in: $config_path"
+  # Compare available and required space
+  if (($(echo "$total_avail < $total_req" | bc))); then
+    log_info "Only $total_avail GB available in $(echo "${diskPath_arr[*]}" | tr ' ' ','), but set $total_req GB UseSpace in total in: $config_path"
     log_info "This configuration can make your storage nodes be frozen after running"
     log_info "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
     exit 1
   fi
 }
 
-is_workpaths_valid() {
+is_sminer_workpaths_valid() {
   local disk_path=$(yq eval '.miners[].diskPath' $config_path | xargs)
   local each_space=$(yq eval '.miners[].UseSpace' $config_path | xargs)
   read -a path_arr <<<"$disk_path"
   read -a space_arr <<<"$each_space"
+
   for i in "${!path_arr[@]}"; do
     if [ ! -d "${path_arr[$i]}" ]; then
-      log_err "Path do not exist: ${path_arr[$i]}"
+      log_err "Path does not exist: ${path_arr[$i]}"
       exit 1
     fi
-    local cur_avail=$(df -h ${path_arr[$i]} | awk '{print $2}' | tail -n 1 | awk 'BEGIN{FS="G|T"} {print $1}')
-    if df -h ${path_arr[$i]} | awk '{print $2}' | tail -n 1 | grep -i "t" >/dev/null; then
-      cur_avail=$(echo "scale=3; $cur_avail * 1024" | bc)
-    fi
+
+    local cur_avail=$(df -B1G "${path_arr[$i]}" | awk 'NR==2{print $4}') # Get available space in GB
+
     result=$(echo "$cur_avail < ${space_arr[$i]}" | bc)
     if [ "$result" -eq 1 ]; then
       log_info "This configuration can make your storage nodes be frozen after running"
@@ -443,6 +471,27 @@ is_workpaths_valid() {
       exit 1
     fi
   done
+}
+
+is_cacher_workpath_valid() {
+  local enableCacher
+  enableCacher=$(yq eval '.cacher.Enable' "$config_path")
+  if [ "$enableCacher" != "true" ]; then
+    return
+  fi
+  local work_path
+  work_path=$(yq eval '.cacher.WorkSpace' "$config_path")
+  if [ ! -d "$work_path" ]; then
+    log_err "Cacher Work Path does not exist: $work_path"
+    exit 1
+  fi
+  # Check available space greater than 16 GiB
+  local cur_avail
+  cur_avail=$(df -B1G "$work_path" | awk 'NR==2 {print $4}')
+  if [ "$cur_avail" -lt 16 ]; then
+    log_info "Please keep 16 GiB available storage space for cacher at least"
+    exit 1
+  fi
 }
 
 # https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
@@ -486,7 +535,7 @@ get_cur_processors() {
   echo $processors # echo can return num > 255
 }
 
-mk_workdir() {
+mk_sminer_workdir() {
   local disk_paths=$(yq eval '.miners[].diskPath' $config_path | xargs)
   for disk_path in $disk_paths; do
     sudo mkdir -p "$disk_path/miner" "$disk_path/storage"

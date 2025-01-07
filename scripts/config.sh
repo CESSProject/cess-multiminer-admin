@@ -37,7 +37,8 @@ config_generate() {
     is_ports_valid
   fi
 
-  is_workpaths_valid
+  is_sminer_workpaths_valid
+  is_cacher_workpath_valid
 
   log_info "Start generate miners configurations and docker-compose file"
 
@@ -59,17 +60,16 @@ config_generate() {
   docker rm $cid
 
   if [ "$res" -ne "0" ]; then
-    log_err "Failed to generate configurations, please check your config.yaml"
+    log_err "Failed to generate configurations, please check your config file and try again."
     exit 1
   fi
 
-  mk_workdir
-
-  cp -r $build_dir/.tmp/* $build_dir/
+  mk_sminer_workdir
 
   # change '["CMD", "nc", "-zv", "127.0.0.1", "15001"]'   to   ["CMD", "nc", "-zv", "127.0.0.1", "15001"] in docker-compose.yaml
   yq eval '.' $build_dir/docker-compose.yaml | grep -n "test: " | awk '{print $1}' | cut -d':' -f1 | xargs -I {} sed -i "{}s/'//;{}s/\(.*\)'/\1/" $build_dir/docker-compose.yaml
 
+  cp -r $build_dir/.tmp/* $build_dir/
   rm -rf $build_dir/.tmp
   local base_mode_path=/opt/cess/data/$mode
 
@@ -97,6 +97,14 @@ config_generate() {
     fi
     cp $build_dir/watchdog/* $base_mode_path/watchdog/
     log_success "watchdog configuration generated at: $build_dir/watchdog/config.yaml"
+  fi
+
+  local enableCacher=$(yq eval '.cacher.Enable' "$config_path")
+  local work_path=$(yq eval '.cacher.WorkSpace' "$config_path")
+  if [[ $enableCacher == "true" ]]; then
+    # copy $build_dir/cacher/config.yaml to cacher WorkSpace
+    cp $build_dir/cacher/* "$(yq eval '.cacher.WorkSpace' "$config_path")"
+    log_success "cacher configuration generated at: $work_path/config.yaml"
   fi
 
   log_success "docker-compose.yaml generated at: $compose_yaml"
