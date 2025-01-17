@@ -1,7 +1,7 @@
 #!/bin/bash
 
-mineradm_version="v0.1.3"
-network_version="testnet-v0.7.7"
+mineradm_version="v0.2.0"
+network_version="testnet-venus"
 skip_chain="false"
 base_dir=/opt/cess/mineradm
 script_dir=$base_dir/scripts
