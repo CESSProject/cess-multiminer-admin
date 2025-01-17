@@ -45,12 +45,13 @@ miners:
     # `official chain: "wss://testnet-rpc.cess.network"`
     chainWsUrl: "ws://127.0.0.1:9944"
     backupChainWsUrls: [ "wss://testnet-rpc.cess.network" ]
-    # Priority tee list address
-    TeeList:
-      - 127.0.0.1:8080
-      - 127.0.0.1:8081
     # Default 12 second for transaction with chain
     Timeout: 12
+    # Tee list address
+    # Attention: Storage miner will not use public tee nodes on chain if set custom tee nodes in config.yaml
+    # TeeList:
+    #  - 127.0.0.1:8080
+    #  - 127.0.0.1:8081
 
   - name: "miner2"
     apiendpoint: ""
@@ -63,10 +64,6 @@ miners:
     diskPath: "/mnt/cess_storage2"
     chainWsUrl: "ws://127.0.0.1:9944"
     backupChainWsUrls: [ "wss://testnet-rpc.cess.network" ]
-    TeeList:
-      - 127.0.0.1:8080
-      - 127.0.0.1:8081
-    # Default 12 second for transaction with chain
     Timeout: 12
 
 # miners monitor service, send alert with email/webhook when miners is down or get punishment

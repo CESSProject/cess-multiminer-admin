@@ -133,7 +133,7 @@ purge_data() {
   if rm -rf /opt/cess/config/$mode/*; then
     log_success "purge data successfully"
   else
-    log_err "Can not remove data in: /opt/cess/data/$mode/"
+    log_err "Can not remove data in: /opt/cess/config/$mode/"
   fi
 }
 
