@@ -47,11 +47,11 @@ miners:
     backupChainWsUrls: [ "wss://testnet-rpc.cess.network" ]
     # Default 12 second for transaction with chain
     Timeout: 12
-    # Tee list address
+    # Tee public key: HEX
     # Attention: Storage miner will not use public tee nodes on chain if set custom tee nodes in config.yaml
     # TeeList:
-    #  - 127.0.0.1:8080
-    #  - 127.0.0.1:8081
+    #  - 0x3222602a6be742ec9edc3c31cb48dd8a48001bc6efba6c2ed59cd728cdf46a55
+    #  - 0x.....
 
   - name: "miner2"
     apiendpoint: ""

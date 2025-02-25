@@ -503,7 +503,7 @@ split_miners_config() {
       log_err "Fail to generate file: $each_path"
       exit 1
     else
-      log_success "miner$i configuration generated at: $each_path"
+      log_success "miner configuration file has been generated at: $each_path"
     fi
   done
 }
