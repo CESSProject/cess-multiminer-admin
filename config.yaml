@@ -16,6 +16,9 @@ chain:
   port: 30336
   ## listen at port 9944
   rpcPort: 9944
+  ## This mode specifies when the block's state (ie, storage) should be pruned (ie, removed) from the database
+  ## archive: Keep the data of all blocks
+  pruning: 8000
 
 ## miners configurations  (multi miners mode)
 miners:
@@ -47,7 +50,7 @@ miners:
     backupChainWsUrls: [ "wss://testnet-rpc.cess.network" ]
     # Default 12 second for transaction with chain
     Timeout: 12
-    # Tee public key: HEX
+    # Tee public key
     # Attention: Storage miner will not use public tee nodes on chain if set custom tee nodes in config.yaml
     # TeeList:
     #  - 0x3222602a6be742ec9edc3c31cb48dd8a48001bc6efba6c2ed59cd728cdf46a55
