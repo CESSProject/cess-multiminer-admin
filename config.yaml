@@ -40,8 +40,8 @@ miners:
     # otherwise the staking will be paid by the signatureAcc(mnemonic).
     stakingAcc: ""
     # Signature account mnemonic
-    # each miner's mnemonic should be different
-    mnemonic: "aaaaa bbbbb ccccc ddddd eeeee fffff ggggg hhhhh iiiii jjjjj kkkkk lllll"
+    # each storage node's mnemonic should be different
+    mnemonic: "wheel demand repair proof wolf lumber drum clump clown ivory property notice"
     # miner work at this path
     diskPath: "/mnt/cess_storage1"
     # The rpc endpoint of the chain
@@ -69,6 +69,46 @@ miners:
     backupChainWsUrls: [ "wss://testnet-rpc.cess.network" ]
     Timeout: 12
 
+# cacher is a gateway which provide an integration interface for all of your storage miners
+cacher:
+  # Enable is whether to enable the cacher service
+  enable: false
+  # Workspace is the root directory of all working subdirectories of the node. Please reserve at least 16 GiB of storage space for it.
+  WorkSpace: /mnt/cess_cacher
+  # default 16 GB for storage space: 16* 1024 * 1024 * 1024 = 17179869184
+  CacheSize: 17179869184
+  # The RPC address of the blockchain where the cache protocol smart contract is deployed, usually the CESS chain
+  Rpcs:
+    - "ws://127.0.0.1:9944"
+    - "ws://testnet-rpc.cess.network"
+  # SecretKey is the key of the node working account (Ethereum wallet account), which is used to initiate a call request to the cache protocol contract (working on EVM).
+  # By default, it is not filled in, which means that it does not participate in the CD2N network and only has the most basic data interaction with the gateway.
+  SecretKey: ""
+  # Token is the NFT access certificate for nodes to join the CD2N network and will be released in subsequent versions.
+  Token: ""
+  # TokenAcc is the holder account(Ethereum wallet account) of the above NFT token.
+  TokenAcc: ""
+  # TokenAccSign is an Ethereum account signature, which is the token holder's proof of holding the token.
+  # Signature methods and tools will be published in the document.
+  TokenAccSign: ""
+  # CD2N cache protocol contract address, which is responsible for node traffic statistics and reward distribution, and works on EVM.
+  ProtoContract: "0xce078A9098dF68189Cbe7A42FC629A4bDCe7dDD4"
+  # Local storage nodes configuration file, currently only available for the "Cess Multi-Miner Admin" script.
+  # The cacher automatically imports the storage node information started by the script through it.
+  MinerConfigPath: /opt/cess/mineradm/config.yaml
+  # You can manually configure the following connection options to make the cacher serve the specified retriever node:
+  # By default, it points to the CESS official retriever node.
+  # If you register your cacher to the cache protocol contract,
+  # it will automatically connect to some publicly available retriever nodes to get more opportunities to get rewards.
+  CdnNodes:
+    - Account: "0xb7B43408864aEa0449D8F813380f8ec424F7a775"
+      Endpoint: "https://retriever.cess.network"
+  # You can also manually import storage nodes through the following configuration.
+  # The cacher will automatically check the availability of the storage node and complete other information from the chain.
+  StorageNodes:
+    - Account: ""  # CESS account address
+      Endpoint: "" # Http address
+
 # miners monitor service, send alert with email/webhook when miners is down or get punishment
 watchdog:
   # enable miners monitor or not
@@ -87,7 +127,8 @@ watchdog:
       # make sure docker daemon listen at 2375: https://docs.docker.com/config/daemon/remote-access/
       port: 2375
     # Configure remote access for Docker daemon in public network must use tls to make sure mnemonic safe
-    # set ca/crt/key path if the ip no belongs to [ 127.x, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 ]
+    # Set ca/crt/key path if the ip no belongs to [ 127.x, 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 ]
+    # https ≠ security, Set a public endpoint is not recommended
     - ip: 1.1.1.1 # 1.1.1.1 is a public IP
       # make sure docker daemon tls listen at 2376: https://docs.docker.com/engine/security/protect-access/
       port: 2376
@@ -111,3 +152,8 @@ watchdog:
       receiver:
         - example1@gmail.com
         - example2@outlook.com
+  auth:
+    username: "admin" # env: WATCHDOG_USERNAME, default: cess
+    password: "passwd" # env: WATCHDOG_PASSWORD, default: Cess123456
+    jwt_secret_key: "your-random-secret-key" # env: WATCHDOG_JWT_SECRET
+    token_expiry: 1  # 1 hour # env: WATCHDOG_TOKEN_EXPIRY

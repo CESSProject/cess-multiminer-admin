@@ -24,7 +24,7 @@ install() {
   is_ram_satisfied
 
   # disk request in config.yaml must less than hardware-disk
-  is_disk_satisfied
+  is_sminer_disk_satisfied
 
   # install services with (chain)rpcnode or not
   local services
@@ -116,7 +116,7 @@ status() {
 
 purge() {
   log_info "WARNING: this operation can remove all your data in /opt/cess/config/$mode/* and can't revert."
-  log_info "WARNING: this directory contains block data, rpc node will sync with block number 1 if you purge this data"
+  log_info "WARNING: this directory contains block data, rpc node will re-sync with block number 1 if you purge this data"
   printf "Press \033[0;33mY\033[0m if you really want to do: "
   local y=""
   read y
