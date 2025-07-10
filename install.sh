@@ -1,273 +1,339 @@
 #!/bin/bash
 
-local_base_dir=$(
-  cd "$(dirname $0)" || exit
-  pwd
-)
+# Exit immediately if a command exits with a non-zero status.
+set -e
+# Treat unset variables as an error when substituting.
+set -u
+# Pipelines return the exit status of the last command to exit with a non-zero status.
+set -o pipefail
 
+# --- Global Variables ---
+# Directories
+local_base_dir=$(cd "$(dirname "$0")" && pwd)
+local_script_dir="$local_base_dir/scripts"
+install_dir="/opt/cess/mineradm"
+
+# Options
 skip_dep="false"
 retain_config="false"
-no_rmi=0
-keep_running=0
-local_script_dir=$local_base_dir/scripts
-install_dir="/opt/cess/mineradm"
-source $local_script_dir/utils.sh
+no_rmi="false"
+keep_running="false"
+
+# Source utilities
+# shellcheck source=scripts/utils.sh
+source "$local_script_dir/utils.sh"
+
+# --- Functions ---
 
 help() {
   cat <<EOF
 Usage:
-    -h | --help                show help information
-    -n | --no-rmi              do not remove the corresponding image when uninstalling the service
-    -r | --retain-config       retain old config when update mineradm
-    -s | --skip-dep            skip install the dependencies
-    -k | --keep-running        do not docker compose down all services if there have previous cess services
+    install.sh [OPTIONS]
+
+Options:
+    -h, --help                Show this help information
+    -n, --no-rmi              Do not remove the corresponding image when uninstalling the service
+    -r, --retain-config       Retain old config when updating mineradm
+    -s, --skip-dep            Skip installing dependencies
+    -k, --keep-running        Do not stop services from a previous installation
 EOF
   exit 0
 }
 
-install_dependencies() {
-  if [ x"$skip_dep" == x"true" ]; then
-    return 0
-  fi
-
-  if [ x"$PM" == x"apt" ]; then
-    log_info "------------Apt update--------------"
-    if ! apt-get update; then
-      log_info "Please check your network or apt source and then try again"
-      log_err "Apt update failed"
-      exit 1
-    fi
-
-    log_info "------------Install dependencies--------------"
-    if ! apt-get install -y git jq curl wget net-tools; then
-      log_err "Failed to install some libs "
-      log_info "Can install it manually and ignore this error log"
-    fi
-    if ! command_exists nc; then
-      # netcat-openbsd / netcat-traditional / netcat
-      apt-get install -y netcat-openbsd
-    fi
-    if ! command_exists bc; then
-      apt-get install -y bc
-    fi
-    if ! command_exists dmidecode; then
-      apt install -y dmidecode
-    fi
-
-  elif [ x"$PM" == x"yum" ]; then
-    log_info "------------Yum update--------------"
-    if ! yum update; then
-      log_info "Please check your network or yum source and then try again"
-      log_err "Yum update failed"
-      exit 1
-    fi
-    log_info "------------Install dependencies--------------"
-
-    if ! yum install -y git jq curl wget net-tools; then
-      log_err "Failed to install some libs"
-      log_info "Can install it manually and ignore this error log"
-    fi
-    if ! command_exists nc; then
-      sudo yum install epel-release -y
-      sudo yum install nmap-ncat -y
-    fi
-    if ! command_exists bc; then
-      yum install -y bc
-    fi
-    if ! command_exists dmidecode; then
-      yum install -y dmidecode
-    fi
-  fi
-
-  need_install_yq=1
-  while [ $need_install_yq -eq 1 ]; do
-    if command_exists yq; then
-      yq_ver_cur=$(yq -V 2>/dev/null | awk '{print $NF}' | cut -d . -f 1,2 | sed -r 's/^[vV]//')
-      if [ -n "$yq_ver_cur" ] && is_ver_a_ge_b $yq_ver_cur $yq_ver_req; then
-        need_install_yq=0
-      fi
-    fi
-    if [ $need_install_yq -eq 1 ]; then
-      echo "Begin download yq ..."
-      if [ x"$ARCH" == x"x86_64" ]; then
-        wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_amd64 -O /tmp/yq && mv /tmp/yq /usr/bin/yq && chmod +x /usr/bin/yq
-        yq -V
-        log_success "yq is successfully installed!"
-      else
-        wget https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux_arm64 -O /tmp/yq && mv /tmp/yq /usr/bin/yq && chmod +x /usr/bin/yq
-        yq -V
-        log_success "yq is successfully installed!"
-      fi
-    fi
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    -h | --help)
+      help
+      ;;
+    -n | --no-rmi)
+      no_rmi="true"
+      shift
+      ;;
+    -r | --retain-config)
+      retain_config="true"
+      shift
+      ;;
+    -s | --skip-dep)
+      skip_dep="true"
+      shift
+      ;;
+    -k | --keep-running)
+      keep_running="true"
+      shift
+      ;;
+    *)
+      log_err "Unknown option: $1"
+      help
+      ;;
+    esac
   done
-  if ! command_exists yq; then
-    log_err "Install yq failed"
-    log_info "Can install it manually and ignore this error log"
+}
+
+update_package_manager() {
+  log_info "--- Updating package manager ($PM) ---"
+  if [ "$PM" = "apt" ]; then
+    apt-get update
+  elif [ "$PM" = "yum" ]; then
+    yum -y update
+  fi
+  log_success "Package manager updated successfully."
+}
+
+install_packages() {
+  log_info "Installing packages: $*"
+  if [ "$PM" = "apt" ]; then
+    apt-get install -y "$@"
+  elif [ "$PM" = "yum" ]; then
+    yum install -y "$@"
+  fi
+}
+
+install_base_dependencies() {
+  log_info "--- Installing base dependencies ---"
+  local pkgs="git jq curl wget net-tools bc dmidecode"
+  install_packages $pkgs
+
+  if ! command_exists nc; then
+    log_info "Installing netcat..."
+    if [ "$PM" = "apt" ]; then
+      install_packages netcat-openbsd
+    elif [ "$PM" = "yum" ]; then
+      # EPEL repository provides nmap-ncat
+      install_packages epel-release
+      install_packages nmap-ncat
+    fi
+  fi
+  log_success "Base dependencies installed."
+}
+
+install_yq() {
+  log_info "--- Checking and installing yq ---"
+  local yq_ver_req="4.25"
+  if command_exists yq; then
+    local yq_ver_cur
+    yq_ver_cur=$(yq -V | awk '{print $NF}' | sed 's/v//' | cut -d. -f1,2)
+    if is_ver_a_ge_b "$yq_ver_cur" "$yq_ver_req"; then
+      log_info "yq is already installed and meets version requirements."
+      return
+    fi
+    log_info "yq version is old, upgrading..."
   fi
 
-  need_install_docker=1
+  log_info "Downloading and installing yq..."
+  local yq_url_base="https://github.com/mikefarah/yq/releases/download/v4.25.3/yq_linux"
+  local yq_binary="/usr/bin/yq"
+  local arch_suffix
+  if [ "$ARCH" = "x86_64" ]; then
+    arch_suffix="amd64"
+  else
+    arch_suffix="arm64"
+  fi
+
+  wget "${yq_url_base}_${arch_suffix}" -O "$yq_binary"
+  chmod +x "$yq_binary"
+  log_success "yq installed successfully: $(yq -V)"
+}
+
+install_docker() {
+  log_info "--- Checking and installing Docker ---"
+  local docker_ver_req="20.10"
   if command_exists docker && [ -e /var/run/docker.sock ]; then
-    cur_docker_ver=$(docker version -f '{{.Server.Version}}')
-    log_info "current docker version: $cur_docker_ver"
-    cur_docker_ver=$(echo $cur_docker_ver | cut -d . -f 1,2)
-    if is_ver_a_ge_b $cur_docker_ver $docker_ver_req; then
-      need_install_docker=0
-      log_info "don't need install or upgrade docker"
+    local cur_docker_ver
+    cur_docker_ver=$(docker version -f '{{.Server.Version}}' | cut -d. -f1,2)
+    log_info "Current Docker version: $cur_docker_ver"
+    if is_ver_a_ge_b "$cur_docker_ver" "$docker_ver_req"; then
+      log_info "Docker is already installed and meets version requirements."
+      return
     fi
+    log_info "Docker version is old or not installed, proceeding with installation..."
   fi
 
-  if [ $need_install_docker -eq 1 ]; then
-    # install or update docker
-    if ! curl -fsSL https://get.docker.com | bash; then
-      log_err "Install docker failed"
-      log_info "Can install docker manually and ignore this error log"
-    fi
+  log_info "Installing Docker via get.docker.com script..."
+  curl -fsSL https://get.docker.com | bash
+  log_success "Docker installed successfully."
+}
+
+install_docker_compose_plugin() {
+  log_info "--- Checking and installing Docker Compose plugin ---"
+  if docker compose version &>/dev/null; then
+    log_info "Docker Compose plugin is already installed."
+    return
   fi
 
-  # check docker-compose-plugin
-  if [ x"$PM" == x"apt" ]; then
-    if ! dpkg -l | grep -q docker-compose-plugin; then
-      add_docker_ubuntu_repo
-      if ! apt-get install -y docker-compose-plugin; then
-        log_err "Install docker-compose-plugin failed"
-        log_info "Can install docker compose manually and ignore this error log"
-      fi
-    fi
-  elif [ x"$PM" == x"yum" ]; then
-    if ! rpm -qa | grep -q docker-compose-plugin; then
-      add_docker_centos_repo
-      if ! yum install -y docker-compose-plugin; then
-        log_err "Install docker-compose-plugin failed"
-        log_info "Can install docker compose manually and ignore this error log"
-      fi
-    fi
+  log_info "Installing Docker Compose plugin..."
+  if [ "$PM" = "apt" ]; then
+    add_docker_ubuntu_repo
+    install_packages docker-compose-plugin
+  elif [ "$PM" = "yum" ]; then
+    add_docker_centos_repo
+    install_packages docker-compose-plugin
   fi
+  log_success "Docker Compose plugin installed successfully."
+}
+
+install_all_dependencies() {
+  if [ "$skip_dep" = "true" ]; then
+    log_info "Skipping dependency installation as requested."
+    return
+  fi
+
+  trap 'log_err "An error occurred during dependency installation."; exit 1' ERR
+
+  update_package_manager
+  install_base_dependencies
+  install_yq
+  install_docker
+  install_docker_compose_plugin
+
   sysctl -w net.core.rmem_max=2500000
+  log_success "All dependencies installed successfully."
+
+  # remove trap
+  trap - ERR
+}
+
+get_mineradm_version() {
+  local util_script="$1"
+  if [ -f "$util_script" ]; then
+    grep 'mineradm_version=' "$util_script" | cut -d'"' -f2
+  else
+    echo "N/A"
+  fi
+}
+
+confirm_config_overwrite() {
+  local old_version="$1"
+  log_info "WARNING: An existing installation (version: $old_version) was found."
+  log_info "         Re-installing will overwrite the existing configuration."
+  log_info "         To keep your old configuration, use the -r or --retain-config flag."
+  printf "Press \033[0;33mY\033[0m to continue, or any other key to cancel: "
+  local y=""
+  read -r y
+  if [[ "$y" != "Y" && "$y" != "y" ]]; then
+    echo "Installation canceled by user."
+    exit 0
+  fi
+}
+
+uninstall_previous_version() {
+  local old_version="$1"
+  local uninstall_script="$install_dir/scripts/uninstall.sh"
+  if [ -f "$uninstall_script" ]; then
+    log_info "Uninstalling previous CESS mineradm version: $old_version"
+    local uninstall_opts=()
+    if [ "$no_rmi" = "true" ]; then
+      uninstall_opts+=("--no-rmi")
+    fi
+    if [ "$keep_running" = "true" ]; then
+      uninstall_opts+=("--keep-running")
+    fi
+    bash "$uninstall_script" "${uninstall_opts[@]}"
+  fi
+}
+
+install_mineradm_files() {
+  log_info "--- Installing CESS mineradm files ---"
+  mkdir -p "$install_dir/scripts"
+
+  cp "$local_base_dir/config.yaml" "$install_dir/config.yaml"
+  cp -r "$local_base_dir/scripts" "$install_dir/"
+  cp "$local_script_dir/miner.sh" /usr/bin/mineradm
+
+  log_info "Setting file permissions..."
+  chown root:root "$install_dir/config.yaml"
+  chmod 0600 "$install_dir/config.yaml"
+  chmod +x /usr/bin/mineradm
+  chmod +x "$install_dir/scripts/"*.sh
+  log_success "Files installed."
+}
+
+setup_bash_completion() {
+  log_info "--- Setting up bash completion ---"
+  local completion_script_path="$install_dir/scripts/completion.sh"
+  if ! grep -q "source $completion_script_path" ~/.bashrc; then
+    echo "source $completion_script_path" >>~/.bashrc
+    log_info "Bash completion sourced in ~/.bashrc"
+  fi
+  # shellcheck source=scripts/completion.sh
+  source "$completion_script_path"
+}
+
+attempt_enable_docker_api() {
+  log_info "--- Enabling Docker Remote API ---"
+  if ! enable_docker_api; then
+    log_err "Failed to enable Docker API automatically."
+    log_info "The monitor service (watchdog) requires the Docker API."
+    log_info "Please try to enable it manually: https://docs.docker.com/config/daemon/remote-access/"
+    if [ -f /lib/systemd/system/backup-docker.service ]; then
+        log_info "Restoring docker service from backup and restarting."
+        cat /lib/systemd/system/backup-docker.service >/lib/systemd/system/docker.service
+        systemctl daemon-reload
+        systemctl restart docker
+    fi
+  else
+    log_success "Docker Remote API enabled."
+  fi
 }
 
 install_mineradm() {
-  local dst_bin=/usr/bin/mineradm
-  local dst_config=$install_dir/config.yaml           # /opt/cess/mineradm/config.yaml
-  local dst_utils_sh=$install_dir/scripts/utils.sh    #/opt/cess/mineradm/scripts/utils.sh
-  local src_utils_sh=$local_base_dir/scripts/utils.sh #/$pwd/scripts/utils.sh
-  local old_version=""
-  local new_version=""
-  if [ -f "$dst_utils_sh" ]; then
-    old_version=$(grep mineradm_version $dst_utils_sh | awk -F = '{gsub(/"/,"");print $2}')
-  fi
-  if [ -f "$src_utils_sh" ]; then
-    new_version=$(grep mineradm_version $src_utils_sh | awk -F = '{gsub(/"/,"");print $2}')
-  fi
+  local dst_utils_sh="$install_dir/scripts/utils.sh"
+  local src_utils_sh="$local_script_dir/utils.sh"
+  local old_version
+  old_version=$(get_mineradm_version "$dst_utils_sh")
+  local new_version
+  new_version=$(get_mineradm_version "$src_utils_sh")
 
-  echo "Begin install cess mineradm: $new_version"
+  log_info "--- Starting CESS mineradm installation (v$new_version) ---"
 
-  if [ -f "$dst_config" ] && [ x"$retain_config" != x"true" ]; then
-    log_info "WARNING: It is detected that you may have previously installed cess mineradm: $old_version"
-    log_info "         and that a new installation will overwrite the original configuration."
-    log_info "         Request to make sure you have backed up the relevant important configuration data."
-    printf "Press \033[0;33mY\033[0m to continue: "
-    local y=""
-    read y
-    if [ x"$y" != x"Y" ]; then
-      echo "install operate cancel"
-      return 1
-    fi
+  if [ -f "$install_dir/config.yaml" ] && [ "$retain_config" != "true" ]; then
+    confirm_config_overwrite "$old_version"
   fi
 
-  local old_config="/tmp/.old_config.yaml"
-  if [[ -f $dst_config ]] && [[ $retain_config = "true" ]]; then
-    cp $dst_config $old_config
+  local old_config_backup=""
+  if [ -f "$install_dir/config.yaml" ] && [ "$retain_config" = "true" ]; then
+    old_config_backup=$(mktemp /tmp/cess-config.XXXXXX.yaml)
+    log_info "Backing up existing configuration to $old_config_backup"
+    cp "$install_dir/config.yaml" "$old_config_backup"
   fi
 
-  if [ -f "$install_dir/scripts/uninstall.sh" ]; then
-    echo "Uninstall old cess mineradm: $old_version"
-    local opt=
-    local keep=
-    if [[ $no_rmi -eq 1 ]]; then
-      opt="--no-rmi"
-    fi
-    if [[ $keep_running -eq 1 ]]; then
-      keep="--keep-running"
-    fi
-    sudo bash $install_dir/scripts/uninstall.sh $opt $keep
+  uninstall_previous_version "$old_version"
+  install_mineradm_files
+
+  if [ -n "$old_config_backup" ] && [ -f "$old_config_backup" ]; then
+    log_info "Restoring old config to $install_dir/.old_config.yaml"
+    mv "$old_config_backup" "$install_dir/.old_config.yaml"
   fi
 
-  mkdir -p $install_dir
+  setup_bash_completion
+  attempt_enable_docker_api
 
-  cp $local_base_dir/config.yaml $dst_config
-
-  if [ -f $old_config ]; then
-    mv $old_config $install_dir
-    log_info "Save old config in /opt/cess/mineradm: .old_config.yaml"
-  fi
-  chown root:root $install_dir/config.yaml
-  chmod 0600 $install_dir/config.yaml
-
-  cp -r $local_base_dir/scripts $install_dir/
-
-  cp $local_script_dir/miner.sh $dst_bin
-  chmod +x $dst_bin
-
-  chmod +x $install_dir/scripts/*.sh
-  echo "source $install_dir/scripts/completion.sh" >>~/.bashrc
-  source $install_dir/scripts/completion.sh
-
-  if ! enable_docker_api; then
-    log_err "Fail to enable Docker API, try to enable it manually: https://docs.docker.com/config/daemon/remote-access/"
-    log_info "The monitor service: watchdog, can not be run if docker api is not enabled."
-    cat /lib/systemd/system/backup-docker.service >/lib/systemd/system/docker.service
-    sudo systemctl daemon-reload
-    sudo systemctl restart docker
-  fi
-
-  log_success "Install cess mineradm success"
+  log_success "CESS mineradm v$new_version installed successfully!"
 }
 
-while true; do
-  case "$1" in
-  -s | --skip-dep)
-    skip_dep="true"
-    shift 1
-    ;;
-  -r | --retain-config)
-    retain_config="true"
-    shift 1
-    ;;
-  -n | --no-rmi)
-    no_rmi=1
-    shift 1
-    ;;
-  -k | --keep-running)
-    keep_running=1
-    shift 1
-    ;;
-  "")
-    shift
-    break
-    ;;
-  *)
-    help
-    break
-    ;;
-  esac
-done
+main() {
+  parse_args "$@"
+  
+  ensure_root
+  get_system_arch
+  get_packageManager_type
 
-ensure_root
-get_system_arch
-get_packageManager_type
+  if [ "$PM" != "yum" ] && [ "$PM" != "apt" ]; then
+    log_err "This installer only supports apt (Debian/Ubuntu) and yum (CentOS/RHEL) package managers."
+    exit 1
+  fi
 
-if [ x"$PM" != x"yum" ] && [ x"$PM" != x"apt" ]; then
-  log_err "Only support package manager: yum or apt"
-  exit 1
-fi
+  if ! is_kernel_satisfied; then
+    exit 1
+  fi
 
-if ! is_kernel_satisfied; then
-  exit 1
-fi
+  if ! is_base_hardware_satisfied; then
+    exit 1
+  fi
 
-if ! is_base_hardware_satisfied; then
-  exit 1
-fi
+  install_all_dependencies
+  install_mineradm
+}
 
-install_dependencies
-install_mineradm
+main "$@"
+
