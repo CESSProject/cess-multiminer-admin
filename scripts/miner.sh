@@ -475,6 +475,55 @@ cess miners usage:
 EOF
 }
 
+cacher_ops() {
+  if [ ! -f "$compose_yaml" ]; then
+    log_err "docker-compose.yaml not found in /opt/cess/mineradm/build"
+    return 1
+  fi
+
+  if ! docker compose -f $compose_yaml config >/dev/null; then
+    log_err "docker-compose.yaml is not valid !"
+    exit 1
+  fi
+
+  local cacher_names=$(yq eval '.services | keys | map(select(. == "cacher*" )) | join(" ")' $compose_yaml)
+  if [ -z "$cacher_names" ]; then
+    log_info "No cacher services found in $compose_yaml"
+    return 0
+  fi
+
+  case "$1" in
+  restart)
+    log_info "Restarting cacher services: $cacher_names"
+    docker compose -f $compose_yaml restart $cacher_names
+    return $?
+    ;;
+  stop)
+    log_info "Stopping cacher services: $cacher_names"
+    docker compose -f $compose_yaml stop $cacher_names
+    return $?
+    ;;
+  remove)
+    log_info "Removing cacher services: $cacher_names"
+    docker compose -f $compose_yaml down $cacher_names
+    return $?
+    ;;
+  *)
+    cacher_ops_help
+    exit 0
+    ;;
+  esac
+}
+
+cacher_ops_help() {
+  cat <<EOF
+cess cacher usage:
+    restart                             Restart all cacher services
+    stop                                Stop all cacher services
+    remove                              Remove all cacher services
+EOF
+}
+
 ###################################### main entrance ###########################################
 
 help() {
@@ -494,6 +543,11 @@ Usage:
            reward                               Query reward information
            claim                                Claim reward
            update                               Update earnings account
+    cacher                                      cacher operations
+       option:
+           restart                              Restart all cacher services
+           stop                                 Stop all cacher services
+           remove                               Remove all cacher services
     stop                                        stop all or one cess service
        option:
            chain                                stop chain at localhost
@@ -533,6 +587,10 @@ case "$1" in
 miners)
   shift
   miner_ops "$@"
+  ;;
+cacher)
+  shift
+  cacher_ops "$@"
   ;;
 -v | version)
   version

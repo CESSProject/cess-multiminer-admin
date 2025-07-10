@@ -8,11 +8,14 @@ _mineradm_completions() {
   prev2="${COMP_WORDS[COMP_CWORD - 2]}"
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    opts="miners stop restart down status pullimg purge config profile tools help"
+    opts="miners cacher stop restart down status pullimg purge config profile tools help"
   else
     case "$prev" in
     miners)
       opts="increase withdraw stat reward claim update"
+      ;;
+    cacher)
+      opts="restart stop remove"
       ;;
     tools)
       opts="space-info no-watch set"
