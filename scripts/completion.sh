@@ -8,7 +8,7 @@ _mineradm_completions() {
   prev2="${COMP_WORDS[COMP_CWORD - 2]}"
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
-    opts="miners cacher stop restart down status pullimg purge config profile tools help"
+    opts="miners cacher stop restart down status pullimg purge config profile tools version increase help"
   else
     case "$prev" in
     miners)
@@ -22,6 +22,9 @@ _mineradm_completions() {
       ;;
     increase)
       opts="staking space"
+      ;;
+    config)
+      opts="show generate help"
       ;;
     esac
   fi

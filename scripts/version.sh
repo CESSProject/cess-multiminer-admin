@@ -37,14 +37,14 @@ show_version() {
     version=$(docker run --rm $extra_docker_opts "$image_name:$image_tag" "$version_cmd" 2>/dev/null || echo "error getting version")
   fi
   
-  printf "%-20s %-30s %-20s\n" "$prog_name" "$version" "$image_id"
+  printf "%-20s %-40s %-40s\n" "$prog_name" "$version" "$image_id"
 }
 
 # Displays versions of all relevant Docker images.
 inner_docker_version() {
   echo "----------------------------------------------------------------"
   printf "Docker Images:\n"
-  printf "%-20s %-30s %-20s\n" "IMAGE" "VERSION" "IMAGE ID"
+  printf "%-20s %-40s %-40s\n" "IMAGE" "VERSION" "IMAGE ID"
   show_version "config-gen" "cesslab/config-gen" "version"
   show_version "chain" "cesslab/cess-chain" "--version"
   show_version "miner" "cesslab/cess-miner" "version"
@@ -53,7 +53,7 @@ inner_docker_version() {
 # Main function to display all version information.
 version() {
   printf "CESS Mineradm Version Information\n"
-  printf "---------------------------------\n"
+  printf "%s\n" "---------------------------------"
   printf "%-20s: %s\n" "Network" "$network_version"
   printf "%-20s: %s\n" "Mineradm Version" "$mineradm_version"
   printf "%-20s: %s\n" "Mode" "$(yq eval ".node.mode" "$config_path")"
@@ -69,8 +69,3 @@ version() {
 
   inner_docker_version
 }
-
-# --- Main Execution ---
-# Load the profile from config before running.
-load_profile
-version

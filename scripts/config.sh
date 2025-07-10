@@ -76,20 +76,22 @@ prepare_build_dir() {
 run_config_generator() {
   log_info "Running config generator..."
   pullimg # Ensure latest images are used
-  
+
+  local cidfile=$(mktemp)
+  rm $cidfile
+
   local cg_image="cesslab/config-gen:$profile"
-  local cidfile
-  cidfile=$(mktemp)
-  
-  # The trap ensures the container is removed even if the script fails.
-  trap 'docker rm -f "$(cat "$cidfile")" &>/dev/null || true; rm -f "$cidfile"' EXIT
-  
-  docker run --cidfile "$cidfile" \
-    -v "$base_dir/etc:/opt/app/etc" \
-    -v "$build_dir/.tmp:/opt/app/.tmp" \
-    -v "$config_path:/opt/app/config.yaml" \
-    "$cg_image"
-  
+  docker run --cidfile $cidfile -v $base_dir/etc:/opt/app/etc -v $build_dir/.tmp:/opt/app/.tmp -v $config_path:/opt/app/config.yaml $cg_image
+
+  local res="$?"
+  local cid=$(cat $cidfile)
+  docker rm $cid
+
+  if [ "$res" -ne "0" ]; then
+    log_err "Failed to generate configurations, please check your config file and try again."
+    exit 1
+  fi
+
   log_success "Config generator finished."
 }
 
@@ -133,16 +135,6 @@ deploy_generated_configs() {
   log_success "All configurations deployed."
 }
 
-# Patches the generated docker-compose.yaml for compatibility.
-patch_compose_file() {
-  log_info "Patching docker-compose.yaml..."
-  # This sed command removes extra single quotes from the 'test' command array,
-  # which can cause issues with some Docker versions.
-  # e.g., '["CMD", "nc", ...]' -> ["CMD", "nc", ...]
-  sed -i "s/'\([\"CMD\".*\)'/\1/" "$compose_yaml"
-  log_success "docker-compose.yaml patched."
-}
-
 # Main function to generate all configuration files.
 config_generate() {
   log_info "--- Starting Configuration Generation ---"
@@ -151,18 +143,15 @@ config_generate() {
   prepare_build_dir
   run_config_generator
   deploy_generated_configs
-  patch_compose_file
-  
+
   log_success "Configuration generation complete. Docker Compose file is at: $compose_yaml"
 }
 
 # --- Main Execution ---
-
+mode=$(yq eval ".node.mode" "$config_path")
 # Main router for the 'config' command.
 config() {
   # Set default mode if not valid
-  local mode
-  mode=$(yq eval ".node.mode" "$config_path")
   if [ "$mode" != "multiminer" ]; then
     log_info "The mode in $config_path is invalid, setting value to: multiminer"
     yq -i eval '.node.mode="multiminer"' "$config_path"
@@ -171,7 +160,8 @@ config() {
   case "${1:-help}" in
   -s | show)
     config_show
-    ;;n  -g | generate)
+    ;;
+  -g | generate)
     config_generate
     ;;
   -h | help | *)
@@ -179,10 +169,3 @@ config() {
     ;;
   esac
 }
-
-# If run directly, execute the main function.
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
-  # Load profile from config before running.
-  load_profile
-  config "$@"
-fi

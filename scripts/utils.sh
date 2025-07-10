@@ -18,31 +18,31 @@ mineradm_version="v0.2.1"
 network_version="testnet"
 
 # Paths
-readonly base_dir="/opt/cess/mineradm"
-readonly script_dir="$base_dir/scripts"
-readonly config_path="$base_dir/config.yaml"
-readonly build_dir="$base_dir/build"
-readonly compose_yaml="$build_dir/docker-compose.yaml"
+base_dir="/opt/cess/mineradm"
+script_dir="$base_dir/scripts"
+config_path="$base_dir/config.yaml"
+build_dir="$base_dir/build"
+compose_yaml="$build_dir/docker-compose.yaml"
 
 # Configuration Profile
 profile="testnet"
 
 # System Requirements
-readonly kernel_ver_req="5.11"
-readonly docker_ver_req="20.10"
-readonly yq_ver_req="4.25"
-readonly cpu_req=4
-readonly ram_req=8 # GB
+kernel_ver_req="5.11"
+docker_ver_req="20.10"
+yq_ver_req="4.25"
+cpu_req=4
+ram_req=8 # GB
 
 # Per-service Requirements
-readonly each_miner_ram_req=4   # GB
-readonly each_miner_cpu_req=1   # Cores
-readonly each_rpcnode_ram_req=2 # GB
-readonly each_rpcnode_cpu_req=1 # Cores
+each_miner_ram_req=4   # GB
+each_miner_cpu_req=1   # Cores
+each_rpcnode_ram_req=2 # GB
+each_rpcnode_cpu_req=1 # Cores
 
 # System Info
-PM=""      # Package Manager (apt, yum)
-DISTRO=""  # Linux Distribution (Ubuntu, CentOS)
+PM=""         # Package Manager (apt, yum)
+DISTRO=""     # Linux Distribution (Ubuntu, CentOS)
 ARCH="x86_64" # System Architecture
 
 # --- Logging Functions ---
@@ -166,20 +166,20 @@ get_cur_ram() {
     local total_mb=0
     # Process each line like "Size: 8 GB" or "Size: 4096 MB"
     while read -r size unit; do
-        if [[ "$size" =~ ^[0-9]+$ ]]; then
-            if [[ "$unit" == "GB" ]]; then
-                total_mb=$((total_mb + size * 1024))
-            elif [[ "$unit" == "MB" ]]; then
-                total_mb=$((total_mb + size))
-            fi
+      if [[ "$size" =~ ^[0-9]+$ ]]; then
+        if [[ "$unit" == "GB" ]]; then
+          total_mb=$((total_mb + size * 1024))
+        elif [[ "$unit" == "MB" ]]; then
+          total_mb=$((total_mb + size))
         fi
+      fi
     done < <(sudo dmidecode -t memory | grep -i "Size:" | grep -v "No Module Installed" | awk '{print $2, $3}')
 
     if [ "$total_mb" -gt 0 ]; then
-        # Round to the nearest GB. Add 512MB for rounding before integer division.
-        echo $(((total_mb + 512) / 1024))
+      # Round to the nearest GB. Add 512MB for rounding before integer division.
+      echo $(((total_mb + 512) / 1024))
     else
-        get_cur_ram_from_proc
+      get_cur_ram_from_proc
     fi
   else
     get_cur_ram_from_proc
@@ -235,6 +235,49 @@ load_profile() {
   esac
 }
 
+is_sminer_workpaths_valid() {
+  local disk_path=$(yq eval '.miners[].diskPath' $config_path | xargs)
+  local each_space=$(yq eval '.miners[].UseSpace' $config_path | xargs)
+  read -a path_arr <<<"$disk_path"
+  read -a space_arr <<<"$each_space"
+  for i in "${!path_arr[@]}"; do
+    if [ ! -d "${path_arr[$i]}" ]; then
+      log_err "Path does not exist: ${path_arr[$i]}"
+      exit 1
+    fi
+
+    local cur_avail=$(df -B1G "${path_arr[$i]}" | awk 'NR==2{print $2}') # Get available space in GB
+
+    result=$(echo "$cur_avail < ${space_arr[$i]}" | bc)
+    if [ "$result" -eq 1 ]; then
+      log_info "This configuration can make your storage nodes be frozen after running"
+      log_err "Only $cur_avail GB available in ${path_arr[$i]}, but set UseSpace: ${space_arr[$i]} GB in: $config_path"
+      exit 1
+    fi
+  done
+}
+
+is_cacher_workpath_valid() {
+  local enableCacher
+  enableCacher=$(yq eval '.cacher.enable' "$config_path")
+  if [ "$enableCacher" != "true" ]; then
+    return
+  fi
+  local work_path
+  work_path=$(yq eval '.cacher.WorkSpace' "$config_path")
+  if [ ! -d "$work_path" ]; then
+    log_err "Cacher Work Path does not exist: $work_path"
+    exit 1
+  fi
+  # Check available space greater than 16 GiB
+  local cur_avail
+  cur_avail=$(df -B1G "$work_path" | awk 'NR==2 {print $4}')
+  if [ "$cur_avail" -lt 16 ]; then
+    log_info "Please keep 16 GiB available storage space for cacher at least"
+    exit 1
+  fi
+}
+
 # Sets a new profile in the config file.
 set_profile() {
   local to_set="$1"
@@ -267,8 +310,8 @@ enable_docker_api() {
   log_info "Enabling Docker Remote API..."
   local docker_service_file="/lib/systemd/system/docker.service"
   if [ ! -f "$docker_service_file" ]; then
-      log_err "Docker service file not found at $docker_service_file"
-      return 1
+    log_err "Docker service file not found at $docker_service_file"
+    return 1
   fi
 
   local backup_file="/lib/systemd/system/docker.service.bak"
@@ -324,7 +367,6 @@ mk_sminer_workdir() {
   done
 }
 
-# Splits the main miners config into individual files for each miner.
 split_miners_config() {
   log_info "Splitting miner configurations..."
   local miners_num
@@ -333,10 +375,14 @@ split_miners_config() {
     local disk_path
     disk_path=$(yq eval ".miners[$i].diskPath" "$config_path")
     local miner_config_path="$disk_path/miner/config.yaml"
-    
-    yq eval ".miners[$i]" "$config_path" > "$miner_config_path"
-    
-    log_success "Generated miner config: $miner_config_path"
+
+    local miner_config="yq eval '.[$i]' $build_dir/miners/config.yaml"
+    if ! eval $miner_config >$miner_config_path; then
+      log_err "Fail to generate storage node config file: $miner_config_path"
+      exit 1
+    else
+      log_success "Generated miner config: $miner_config_path"
+    fi
   done
 }
 
@@ -394,9 +440,9 @@ rand() {
   local max=$2
   # Use /dev/urandom for better randomness if available
   if [ -c /dev/urandom ]; then
-      head -c 4 /dev/urandom | od -An -tu4 | awk -v min="$min" -v max="$max" '{print ($1 % (max-min+1)) + min}'
+    head -c 4 /dev/urandom | od -An -tu4 | awk -v min="$min" -v max="$max" '{print ($1 % (max-min+1)) + min}'
   else
-      # Fallback to date
-      echo $(( ( $(date +%s%N) % (max-min+1) ) + min ))
+    # Fallback to date
+    echo $((($(date +%s%N) % (max - min + 1)) + min))
   fi
 }
