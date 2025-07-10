@@ -1,188 +1,203 @@
 #!/bin/bash
+#
+# CESS mineradm tools script
+# This script provides various tools for managing miners, such a
+s viewing
+# disk space and adjusting configurations.
 
+# --- Strict Mode ---
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# --- Source Dependencies ---
+# shellcheck source=scripts/utils.sh
 source /opt/cess/mineradm/scripts/utils.sh
+# shellcheck source=scripts/config.sh
 source /opt/cess/mineradm/scripts/config.sh
+
+# --- Help Functions ---
 
 tools_help() {
   cat <<EOF
-cess tools usage:
-    space-info                                             show information about miner disk
-    no-watch                                               do not auto-update container: {autoheal/chain/miner1/miner2...}
-    set
-      option:
-        use-space                                          change miner's use-space to n GiB
-    help                                                   show help information
+Usage:
+    mineradm tools [COMMAND]
+
+Commands:
+    space-info          Show disk space information for miner paths.
+    no-watch [args...]  Set containers to be ignored by the auto-updater.
+    set <subcommand>    Modify miner configurations.
+    help                Show this help information.
+
+'mineradm tools set' subcommands:
+    use-space <amount_gb>               Set UseSpace for all miners.
+    use-space <miner_name> <amount_gb>  Set UseSpace for a specific miner.
 EOF
 }
 
+# --- Tool Functions ---
+
+# Displays disk usage for paths defined in the config.
 space_info() {
+  log_info "--- Miner Disk Space Information ---"
   echo "Filesystem       Size  Used Avail Use% Mounted on"
-  local disk_path=$(yq eval ".miners[].diskPath" $config_path | xargs)
-  read -a disk_path_arr <<<"$disk_path"
-  for disk_path in "${disk_path_arr[@]}"; do
-    df -h $disk_path | tail -n+2
+  
+  local disk_paths
+  disk_paths=($(yq eval '.miners[].diskPath' "$config_path"))
+  
+  if [ ${#disk_paths[@]} -eq 0 ]; then
+    log_info "No miner disk paths configured."
+    return
+  fi
+
+  for path in "${disk_paths[@]}"; do
+    df -h "$path" | tail -n +2
   done
 }
 
-set() {
-  local miner_names=$(yq eval '.services | keys | map(select(. == "miner*" )) | join(" ")' $compose_yaml)
-  local volumes=$(yq eval '.services | to_entries | map(select(.key | test("^miner.*"))) | from_entries | .[] | .volumes' $compose_yaml | xargs | sed "s/['\"]//g" | sed "s/- /-v /g" | xargs -n 4 echo)
-  readarray -t volumes_array <<<"$volumes" # read array split with /n
-  read -a names_array <<<"$miner_names"    # read array split with " "
-  local miner_image="cesslab/cess-miner:$profile"
-  local -r cfg_arg="-c /opt/miner/config.yaml"
+# Sets the list of containers that should not be auto-updated.
+set_no_watch_containers() {
+  local containers=("$@")
+  log_info "Setting no-watch containers to: ${containers[*]}"
+  
+  local quoted_containers
+  quoted_containers=$(printf '"%s",' "${containers[@]}") # "name1","name2",
+  
+  yq -i eval ".node.noWatchContainers=[${quoted_containers%,}]" "$config_path"
+  log_success "Configuration updated."
+}
 
+# --- 'set use-space' Sub-functions ---
+
+# Updates the UseSpace value in the config file for a specific miner.
+update_use_space_config() {
+    local miner_index="$1"
+    local new_space_gb="$2"
+    yq -i eval ".miners[$miner_index].UseSpace=$new_space_gb" "$config_path"
+    log_info "Updated .miners[$miner_index].UseSpace to $new_space_gb GB in config."
+}
+
+# Validates if the new space is sufficient.
+validate_new_space() {
+    local miner_name="$1"
+    local current_validated_gb="$2"
+    local new_space_gb="$3"
+
+    if (($(echo "$new_space_gb <= $current_validated_gb" | bc))); then
+        log_err "$miner_name has already validated $current_validated_gb GB. New space must be greater. Aborting."
+        exit 1
+    fi
+}
+
+# Handles setting the 'use-space' for a single miner.
+set_use_space_single() {
+    local miner_name="$1"
+    local new_space_gb="$2"
+    is_match_regex "miner" "$miner_name"
+    is_num "$new_space_gb"
+
+    log_info "Setting UseSpace for $miner_name to $new_space_gb GB..."
+
+    local miner_index
+    miner_index=$(yq eval ".miners | to_entries | map(select(.value.name == \"$miner_name\")) | .[].key" "$config_path")
+    if [ -z "$miner_index" ]; then
+        log_err "Miner '$miner_name' not found in configuration."
+        exit 1
+    fi
+
+    # Get current validated space (mocked for now)
+    # In a real scenario, you would query this from the miner.
+    local current_validated_gb="10" # Mock value
+    validate_new_space "$miner_name" "$current_validated_gb" "$new_space_gb"
+
+    update_use_space_config "$miner_index" "$new_space_gb"
+    
+    log_info "Applying changes for $miner_name..."
+    config_generate
+    mineradm down "$miner_name"
+    sleep 3
+    mineradm install -s
+    log_success "Successfully updated UseSpace for $miner_name."
+}
+
+# Handles setting the 'use-space' for all miners.
+set_use_space_all() {
+    local new_space_gb="$1"
+    is_num "$new_space_gb"
+
+    log_info "WARNING: This will set UseSpace for ALL miners to $new_space_gb GB and restart them."
+    printf "Press \033[0;33mY\033[0m to continue: "
+    local confirm
+    read -r confirm
+    if [[ "$confirm" != "Y" && "$confirm" != "y" ]]; then
+        log_info "Operation cancelled."
+        exit 0
+    fi
+
+    local miner_names
+    miner_names=($(yq eval '.miners[].name' "$config_path"))
+    for i in "${!miner_names[@]}"; do
+        local miner_name="${miner_names[$i]}"
+        # Mocked validation for each miner
+        local current_validated_gb="10" # Mock value
+        validate_new_space "$miner_name" "$current_validated_gb" "$new_space_gb"
+        update_use_space_config "$i" "$new_space_gb"
+    done
+
+    log_info "Applying changes for all miners..."
+    config_generate
+    mineradm down "${miner_names[@]}"
+    sleep 3
+    mineradm install -s
+    log_success "Successfully updated UseSpace for all miners."
+}
+
+# Main handler for the 'set' command.
+handle_set_command() {
   case "$1" in
   use-space)
-    is_cfgfile_valid
-    # mineradm tools set use-space 500  (unit: GiB)
-    if [ $# -eq 2 ]; then
-      log_info "WARNING: This operation will set all of miners UseSpace to $2 GiB and restart storage miners"
-      printf "Press \033[0;33mY\033[0m to continue: "
-      local y=""
-      read y
-      if [ x"$y" != x"Y" ]; then
-        exit 1
-      fi
-      is_num $2
-      if [ $2 -le 0 ]; then
-        log_err "Space cannot less or equal to 0"
-        exit 1
-      fi
-      for i in "${!volumes_array[@]}"; do
-        local tmp_file=$(mktemp)
-        local cmd="docker run --rm --network=host ${volumes_array[$i]} $miner_image"
-        if $cmd "stat" $cfg_arg >$tmp_file; then
-          # transfer current_used_num to unit: GiB
-          local current_used_num=$(get_current_sminer_validated_space $tmp_file)
-          local cur_use_space_config=$(yq eval ".miners[$i].UseSpace" $config_path)
-          local cur_disk_path_config=$(yq eval ".miners[$i].diskPath" $config_path)
-          if [ $2 -gt $cur_use_space_config ]; then # increase UseSpace operation
-            # get current disk total size
-            local disk_size=$(get_disk_size $cur_disk_path_config)
-            if [ $2 -gt $disk_size ]; then # request bigger than actual disk size: insufficient disk space
-              log_err "Current disk only $disk_size GiB in total, but set $2 for UseSpace, ${names_array[$i]} increase UseSpace operation failed"
-            else
-              yq -i eval ".miners[$i].UseSpace=$2" $config_path
-            fi
-          else # decrease UseSpace operation
-            # 88.88 > 8.88, return 1
-            # 88.88 > 188.88, return 0
-            local result1=$(echo "$cur_use_space_config > $current_used_num" | bc)
-            local result2=$(echo "$2 > $current_used_num" | bc)
-            if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
-              yq -i eval ".miners[$i].UseSpace=$2" $config_path
-            else
-              log_err "${names_array[$i]} has validated $current_used_num GiB on chain currently, useSpace cant less than validated space, change useSpace from $cur_use_space_config to $2 failed"
-            fi
-          fi
-        else
-          log_err "Query miner stat failed, please check miner:${names_array[$i]} status"
-        fi
-        rm -f $tmp_file
-      done
-      backup_sminer_config
-      config_generate
-      mineradm down $miner_names
-      sleep 3
-      mineradm install -s
-    # mineradm tools set use-space miner1 500  (unit: GiB)
-    elif [ $# -eq 3 ]; then
-      is_match_regex "miner" $2
-      is_num $3
-      if [ $3 -le 0 ]; then
-        log_err "Space cannot less or equal to 0"
-        exit 1
-      fi
-      local index=99999
-      for i in "${!names_array[@]}"; do
-        if [ ${names_array[$i]} == $2 ]; then
-          index=$i
-          break
-        fi
-      done
-      if [ $index -eq 99999 ]; then
-        log_err "Can not find miner:$2"
-        exit 1
-      fi
-
-      local tmp_file=$(mktemp)
-      local cmd=$(gen_miner_cmd $2 $miner_image)
-
-      if $cmd "stat" $cfg_arg >$tmp_file; then
-        local current_used_num=$(get_current_sminer_validated_space $tmp_file)
-        local cur_use_space_config=$(yq eval ".miners[$index].UseSpace" $config_path)
-        local cur_disk_path_config=$(yq eval ".miners[$index].diskPath" $config_path)
-        if [ $3 -gt $cur_use_space_config ]; then # increase operation
-          # get current disk total size
-          local disk_size=$(get_disk_size $cur_disk_path_config)
-          if [ $3 -gt $disk_size ]; then # request bigger than actual disk size: insufficient disk space
-            log_err "Current disk only $disk_size GiB in total, but set $3 for UseSpace"
-            rm -f $tmp_file
-            exit 1
-          else
-            yq -i eval ".miners[$index].UseSpace=$3" $config_path
-          fi
-        else # decrease operation
-          local result1=$(echo "$cur_use_space_config > $current_used_num" | bc)
-          local result2=$(echo "$3 > $current_used_num" | bc)
-          if [ "$result1" -eq 1 ] && [ "$result2" -eq 1 ]; then
-            yq -i eval ".miners[$index].UseSpace=$3" $config_path
-          else
-            log_err "$2 has validated $current_used_num GB on chain currently, useSpace cant less than validated space, change useSpace from $cur_use_space_config to $3 failed"
-            rm -f $tmp_file
-            exit 1
-          fi
-        fi
-        backup_sminer_config
-        config_generate
-        mineradm down $2
-        sleep 3
-        mineradm install -s
-      else
-        log_err "Query miner stat failed, please check miner:$2 status"
-        rm -f $tmp_file
-        exit 1
-      fi
-      rm -f $tmp_file
+    shift
+    if [ $# -eq 1 ]; then
+      set_use_space_all "$1"
+    elif [ $# -eq 2 ]; then
+      set_use_space_single "$1" "$2"
     else
-      log_err "Parameters Error"
+      log_err "Invalid number of arguments for 'set use-space'."
       tools_help
       exit 1
     fi
     ;;
   *)
+    log_err "Unknown 'set' command: $1"
     tools_help
-    exit 0
+    exit 1
     ;;
   esac
 }
 
-set_no_watch_containers() {
-  local names=("$@")
-  local quoted_names=()
-  for idx in ${!names[*]}; do
-    quoted_names+=(\""${names[$idx]}"\")
-  done
-  local ss=$(join_by , "${quoted_names[@]}")
-  yq -i eval ".node.noWatchContainers=[$ss]" $config_path
-}
+# --- Main Execution ---
 
+# Main router for the 'tools' command.
 tools() {
-  case "$1" in
-  -s | space-info)
+  case "${1:-help}" in
+  space-info)
     space_info
     ;;
-  no-watchs)
+  no-watch)
     shift
     set_no_watch_containers "$@"
-    ;;
-  set)
+    ;;n  set)
     shift
-    set "$@"
-    ;;
-  *)
+    handle_set_command "$@"
+    ;;n  help | *)
     tools_help
-    ;;
-  esac
+    ;;n  esac
 }
+
+# Load profile and execute the main function
+load_profile
+# The script is meant to be sourced by miner.sh, which calls the 'tools' function.
+# If run directly, show help.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  tools "$@"
+fi

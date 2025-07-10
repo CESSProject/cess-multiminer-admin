@@ -1,128 +1,188 @@
 #!/bin/bash
+#
+# CESS mineradm configuration management script
+# This script handles showing, and generating configuration files
+# for all CESS services, including miners, chain nodes, and watchdog.
 
+# --- Strict Mode ---
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# --- Source Dependencies ---
+# shellcheck source=scripts/utils.sh
 source /opt/cess/mineradm/scripts/utils.sh
 
-mode=$(yq eval ".node.mode" $config_path)
-if [ x"$mode" != x"multiminer" ]; then
-  log_info "The mode in $config_path is invalid, set value to: multiminer"
-  yq -i eval ".node.mode=\"multiminer\"" $config_path
-  mode=$(yq eval ".node.mode" $config_path)
-fi
+# --- Help Functions ---
 
 config_help() {
   cat <<EOF
-cess config usage:
-    -h | help                    show help information
-    -s | show                    show configurations
-    -g | generate                generate docker-compose.yaml by config.yaml
+Usage:
+    mineradm config [COMMAND]
+
+Commands:
+    show        (or -s) Show the current configuration in JSON format.
+    generate    (or -g) Generate Docker Compose and service configs from config.yaml.
+    help        (or -h) Show this help information.
 EOF
 }
 
+# --- Core Functions ---
+
+# Shows a filtered view of the main configuration file.
 config_show() {
+  log_info "--- Current Configuration ---"
+  is_cfgfile_valid
+  
   local keys=('"node"' '"miners"')
-  local use_external_chain=$(yq eval ".node.externalChain //0" $config_path)
-  if [[ $use_external_chain -eq 0 ]]; then
+  local use_external_chain
+  use_external_chain=$(yq eval ".node.externalChain // false" "$config_path")
+
+  if [ "$use_external_chain" != "true" ]; then
     keys+=('"chain"')
   fi
-  local ss=$(join_by , "${keys[@]}")
-  yq eval ". |= pick([$ss])" $config_path -o json
+  
+  local key_filter
+  key_filter=$(join_by , "${keys[@]}")
+  
+  yq eval ". |= pick([$key_filter])" "$config_path" -o json
 }
 
-# generate each miner config.yaml and docker-compose.yaml
-config_generate() {
+# --- Configuration Generation Sub-functions ---
+
+# Validates system state and config before generating files.
+validate_pre_generation_state() {
+  log_info "Validating prerequisites..."
   is_cfgfile_valid
-
-  # if user just wanna upgrade mineradm and do not want to stop miners, skip check port
-  if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-miner'; then
-    is_ports_valid
-  fi
-
   is_sminer_workpaths_valid
   is_cacher_workpath_valid
 
-  log_info "Start generate miners configurations and docker-compose file"
-
-  patch_wasm_override_if_testnet
-
-  rm -rf $build_dir
-  mkdir -p $build_dir/.tmp
-
-  local cidfile=$(mktemp)
-  rm $cidfile
-
-  pullimg
-
-  local cg_image="cesslab/config-gen:$profile"
-  docker run --cidfile $cidfile -v $base_dir/etc:/opt/app/etc -v $build_dir/.tmp:/opt/app/.tmp -v $config_path:/opt/app/config.yaml $cg_image
-
-  local res="$?"
-  local cid=$(cat $cidfile)
-  docker rm $cid
-
-  if [ "$res" -ne "0" ]; then
-    log_err "Failed to generate configurations, please check your config file and try again."
-    exit 1
+  # Skip port check if miners are already running to allow for seamless upgrades.
+  if ! docker ps --format '{{.Image}}' | grep -q 'cesslab/cess-miner'; then
+    is_ports_valid
   fi
-
-  mk_sminer_workdir
-
-  cp -r $build_dir/.tmp/* $build_dir/
-
-  rm -rf $build_dir/.tmp
-  local base_mode_path=/opt/cess/data/$mode
-
-  if [ ! -d $base_mode_path/miners/ ]; then
-    log_info "mkdir : $base_mode_path/miners/"
-    mkdir -p $base_mode_path/miners/
-  fi
-  cp $build_dir/miners/* $base_mode_path/miners/
-
-  if [ ! -d $base_mode_path/chain/ ]; then
-    log_info "mkdir : $base_mode_path/chain/"
-    mkdir -p $base_mode_path/chain/
-  fi
-  cp $build_dir/chain/* $base_mode_path/chain/
-
-  chown -R root:root $build_dir
-
-  split_miners_config # generate miners config
-
-  local enableWatchdogService=$(yq eval ".watchdog.enable" $config_path) # generate watchdog config or not
-  if [[ $enableWatchdogService == "true" ]]; then
-    if [ ! -d $base_mode_path/watchdog/ ]; then
-      log_info "mkdir : $base_mode_path/watchdog/"
-      mkdir -p $base_mode_path/watchdog/
-    fi
-    cp $build_dir/watchdog/* $base_mode_path/watchdog/
-    log_success "watchdog configuration generated at: $build_dir/watchdog/config.yaml"
-  fi
-
-  # change '["CMD", "nc", "-zv", "127.0.0.1", "15001"]'   to   ["CMD", "nc", "-zv", "127.0.0.1", "15001"] in docker-compose.yaml
-  yq eval '.' $build_dir/docker-compose.yaml | grep -n "test: " | awk '{print $1}' | cut -d':' -f1 | xargs -I {} sed -i "{}s/'//;{}s/\(.*\)'/\1/" $build_dir/docker-compose.yaml
-
-
-  local enableCacher=$(yq eval '.cacher.enable' "$config_path")
-  local cacher_work_path=$(yq eval '.cacher.WorkSpace' "$config_path")
-  if [[ $enableCacher == "true" ]]; then
-    # copy $build_dir/cacher/config.yaml to cacher WorkSpace
-    cp $build_dir/cacher/* "$(yq eval '.cacher.WorkSpace' "$config_path")"
-    log_success "cacher configuration generated at: $cacher_work_path/config.yaml"
-  fi
-
-  log_success "docker-compose.yaml generated at: $compose_yaml"
+  log_success "Prerequisites validated."
 }
 
+# Prepares the build directory, cleaning any previous build artifacts.
+prepare_build_dir() {
+  log_info "Preparing build directory: $build_dir"
+  rm -rf "$build_dir"
+  mkdir -p "$build_dir/.tmp"
+  log_success "Build directory prepared."
+}
+
+# Runs the config-gen Docker container to generate initial configs.
+run_config_generator() {
+  log_info "Running config generator..."
+  pullimg # Ensure latest images are used
+  
+  local cg_image="cesslab/config-gen:$profile"
+  local cidfile
+  cidfile=$(mktemp)
+  
+  # The trap ensures the container is removed even if the script fails.
+  trap 'docker rm -f "$(cat "$cidfile")" &>/dev/null || true; rm -f "$cidfile"' EXIT
+  
+  docker run --cidfile "$cidfile" \
+    -v "$base_dir/etc:/opt/app/etc" \
+    -v "$build_dir/.tmp:/opt/app/.tmp" \
+    -v "$config_path:/opt/app/config.yaml" \
+    "$cg_image"
+  
+  log_success "Config generator finished."
+}
+
+# Deploys the generated configuration files to their final destinations.
+deploy_generated_configs() {
+  log_info "Deploying generated configurations..."
+  local base_data_path="/opt/cess/data/$mode"
+
+  # Move base configs from .tmp to build dir
+  cp -r "$build_dir/.tmp/"* "$build_dir/"
+  rm -rf "$build_dir/.tmp"
+
+  # Deploy miner configs
+  mkdir -p "$base_data_path/miners/"
+  cp "$build_dir/miners/"* "$base_data_path/miners/"
+  
+  # Deploy chain configs if not external
+  if [ -d "$build_dir/chain" ]; then
+    mkdir -p "$base_data_path/chain/"
+    cp "$build_dir/chain/"* "$base_data_path/chain/"
+  fi
+
+  chown -R root:root "$build_dir"
+  split_miners_config # Generate individual miner configs
+
+  # Deploy watchdog config if enabled
+  if [ "$(yq eval ".watchdog.enable" "$config_path")" == "true" ] && [ -d "$build_dir/watchdog" ]; then
+    mkdir -p "$base_data_path/watchdog/"
+    cp "$build_dir/watchdog/"* "$base_data_path/watchdog/"
+    log_success "Watchdog configuration deployed."
+  fi
+
+  # Deploy cacher config if enabled
+  if [ "$(yq eval '.cacher.enable' "$config_path")" == "true" ] && [ -d "$build_dir/cacher" ]; then
+    local cacher_workspace
+    cacher_workspace=$(yq eval '.cacher.WorkSpace' "$config_path")
+    cp "$build_dir/cacher/"* "$cacher_workspace/"
+    log_success "Cacher configuration deployed to $cacher_workspace"
+  fi
+  
+  log_success "All configurations deployed."
+}
+
+# Patches the generated docker-compose.yaml for compatibility.
+patch_compose_file() {
+  log_info "Patching docker-compose.yaml..."
+  # This sed command removes extra single quotes from the 'test' command array,
+  # which can cause issues with some Docker versions.
+  # e.g., '["CMD", "nc", ...]' -> ["CMD", "nc", ...]
+  sed -i "s/'\([\"CMD\".*\)'/\1/" "$compose_yaml"
+  log_success "docker-compose.yaml patched."
+}
+
+# Main function to generate all configuration files.
+config_generate() {
+  log_info "--- Starting Configuration Generation ---"
+  
+  validate_pre_generation_state
+  prepare_build_dir
+  run_config_generator
+  deploy_generated_configs
+  patch_compose_file
+  
+  log_success "Configuration generation complete. Docker Compose file is at: $compose_yaml"
+}
+
+# --- Main Execution ---
+
+# Main router for the 'config' command.
 config() {
-  case "$1" in
+  # Set default mode if not valid
+  local mode
+  mode=$(yq eval ".node.mode" "$config_path")
+  if [ "$mode" != "multiminer" ]; then
+    log_info "The mode in $config_path is invalid, setting value to: multiminer"
+    yq -i eval '.node.mode="multiminer"' "$config_path"
+  fi
+
+  case "${1:-help}" in
   -s | show)
     config_show
-    ;;
-  -g | generate)
-    shift
+    ;;n  -g | generate)
     config_generate
     ;;
-  *)
+  -h | help | *)
     config_help
     ;;
   esac
 }
+
+# If run directly, execute the main function.
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+  # Load profile from config before running.
+  load_profile
+  config "$@"
+fi
