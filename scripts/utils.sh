@@ -86,6 +86,13 @@ ensure_root() {
   fi
 }
 
+is_ports_valid() {
+  local ports=$(yq eval '.miners[].port' $config_path | xargs)
+  for port in $ports; do
+    check_port $port
+  done
+}
+
 # Detects the Linux distribution and package manager.
 get_packageManager_type() {
   if [ -f /etc/os-release ]; then
@@ -296,6 +303,130 @@ set_profile() {
     return 1
     ;;
   esac
+}
+
+
+is_processors_satisfied() {
+  local miner_num=$(get_miners_num)
+  local cur_processors=$(get_cur_processors)
+
+  # Calculate basic CPU requirements
+  local basic_miners_cpu_need=$(($miner_num * $each_miner_cpu_req))
+  local basic_rpcnode_cpu_need=0
+  if [[ $skip_chain == "false" ]]; then
+    basic_rpcnode_cpu_need=$each_rpcnode_cpu_req
+  fi
+  local basic_cpu_req=$(($basic_miners_cpu_need + $basic_rpcnode_cpu_need))
+
+  # Calculate actual CPU requirements
+  local miners_cpu_req_in_cfg=$(yq eval '.miners[].UseCpu' $config_path | xargs | awk '{ sum = 0; for (i = 1; i <= NF; i++) sum += $i; print sum }')
+  local actual_cpu_req=$(($miners_cpu_req_in_cfg + $basic_rpcnode_cpu_need))
+
+  # Validate CPU requirements
+  if [ $basic_cpu_req -gt $cur_processors ]; then
+    log_info "Each miner node request $each_miner_cpu_req processors at least, each chain node request $each_rpcnode_cpu_req processors at least"
+    log_info "Basic installation request: $basic_cpu_req processors in total, but $cur_processors in current"
+    log_info "Run too much storage node might make your server overload"
+    log_err "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
+    exit 1
+  fi
+
+  if [ $actual_cpu_req -gt $cur_processors ]; then
+    log_info "Totally request: $actual_cpu_req processors in $config_path, but $cur_processors in current"
+    log_err "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
+    exit 1
+  fi
+}
+
+is_ram_satisfied() {
+  local miner_num=$(get_miners_num)
+
+  local basic_miners_ram_need=$(($miner_num * $each_miner_ram_req))
+  local basic_rpcnode_ram_need=0
+
+  if [[ $skip_chain == "false" ]]; then
+    basic_rpcnode_ram_need=$each_rpcnode_ram_req
+  fi
+
+  local total_ram_req=$(($basic_miners_ram_need + $basic_rpcnode_ram_need))
+  local cur_ram=$(get_cur_ram)
+
+  if [ $total_ram_req -gt $cur_ram ]; then
+    log_info "Each miner request $each_miner_ram_req GB ram at least, each chain request $each_rpcnode_ram_req GB ram at least"
+    log_info "Installation request: $total_ram_req GB in total, but $cur_ram GB in current"
+    log_info "Run too much storage node might make your server overload"
+    log_err "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
+    exit 1
+  fi
+}
+
+is_sminer_disk_satisfied() {
+  local diskPath useSpace
+  diskPath=$(yq eval '(.miners | unique_by(.diskPath)) | .[].diskPath' "$config_path")
+  useSpace=$(yq eval '.miners[].UseSpace' "$config_path")
+
+  readarray -t diskPath_arr <<<"$diskPath"
+  readarray -t useSpace_arr <<<"$useSpace"
+
+  local total_avail=0
+  local total_req=0
+
+  # Calculate total available disk space
+  for path in "${diskPath_arr[@]}"; do
+    if [ ! -d "$path" ]; then
+      log_err "Directory does not exist: $path"
+      exit 1
+    fi
+
+    local size_value=$(df -B1G "$path" | awk 'NR==2 {print $2}')
+
+    if [ -z "$size_value" ]; then
+      log_err "Failed to retrieve disk size for path: $path"
+      exit 1
+    fi
+
+    total_avail=$(echo "$total_avail + $size_value" | bc)
+  done
+
+  # Calculate total required disk space
+  for space in "${useSpace_arr[@]}"; do
+    if ! is_num "$space"; then
+      log_err "Invalid UseSpace value: $space"
+      exit 1
+    fi
+    total_req=$(echo "$total_req + $space" | bc)
+  done
+
+  # Compare available and required space
+  if (($(echo "$total_avail < $total_req" | bc))); then
+    log_info "Only $total_avail GB available in $(echo "${diskPath_arr[*]}" | tr ' ' ','), but set $total_req GB UseSpace in total in: $config_path"
+    log_info "This configuration could make your storage nodes be frozen after running"
+    log_info "Please modify configuration in $config_path and execute: [ sudo mineradm config generate ] again"
+    exit 1
+  fi
+}
+
+# https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+add_docker_ubuntu_repo() {
+  # Add Docker's official GPG key:
+  sudo apt-get update
+  sudo apt-get install ca-certificates curl
+  sudo install -m 0755 -d /etc/apt/keyrings
+  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+  # Add the repository to Apt sources:
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+    $(. /etc/os-release && echo "$VERSION_CODENAME") stable" |
+    sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+  sudo apt-get update
+}
+
+# https://docs.docker.com/engine/install/centos/#set-up-the-repository
+add_docker_centos_repo() {
+  sudo yum install -y yum-utils
+  sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 }
 
 # --- Docker & Network Utilities ---
