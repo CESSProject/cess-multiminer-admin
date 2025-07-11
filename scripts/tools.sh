@@ -1,8 +1,7 @@
 #!/bin/bash
 #
 # CESS mineradm tools script
-# This script provides various tools for managing miners, such a
-s viewing
+# This script provides various tools for managing miners, such as viewing
 # disk space and adjusting configurations.
 
 # --- Strict Mode ---
@@ -186,16 +185,17 @@ tools() {
   no-watch)
     shift
     set_no_watch_containers "$@"
-    ;;n  set)
+    ;;
+  set)
     shift
     handle_set_command "$@"
-    ;;n  help | *)
+    ;;
+  help | *)
     tools_help
-    ;;n  esac
+    ;;
+  esac
 }
 
-# Load profile and execute the main function
-load_profile
 # The script is meant to be sourced by miner.sh, which calls the 'tools' function.
 # If run directly, show help.
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then

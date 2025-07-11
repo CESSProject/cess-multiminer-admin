@@ -284,7 +284,7 @@ install_mineradm() {
   local new_version
   new_version=$(get_mineradm_version "$src_utils_sh")
 
-  log_info "--- Starting CESS mineradm installation (v$new_version) ---"
+  log_info "--- Starting CESS mineradm installation ($new_version) ---"
 
   if [ -f "$install_dir/config.yaml" ] && [ "$retain_config" != "true" ]; then
     confirm_config_overwrite "$old_version"
@@ -308,7 +308,7 @@ install_mineradm() {
   setup_bash_completion
   attempt_enable_docker_api
 
-  log_success "CESS mineradm v$new_version installed successfully!"
+  log_success "CESS mineradm $new_version installed successfully!"
 }
 
 main() {
