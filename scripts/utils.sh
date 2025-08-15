@@ -14,8 +14,8 @@ set -o pipefail
 
 # --- Global Variables & Constants ---
 # Versioning
-mineradm_version="v0.2.1"
-network_version="testnet"
+mineradm_version="v0.2.2"
+network_version="testnet2"
 
 # Paths
 base_dir="/opt/cess/mineradm"
@@ -25,7 +25,7 @@ build_dir="$base_dir/build"
 compose_yaml="$build_dir/docker-compose.yaml"
 
 # Configuration Profile
-profile="testnet"
+profile="testnet2"
 
 # System Requirements
 kernel_ver_req="5.11"
@@ -232,7 +232,7 @@ load_profile() {
   local current_profile
   current_profile=$(yq eval ".node.profile" "$config_path")
   case "$current_profile" in
-  devnet | testnet | premainnet | mainnet)
+  devnet | testnet | testnet2 | mainnet)
     profile="$current_profile"
     log_info "Loaded profile: $profile"
     ;;
@@ -294,12 +294,12 @@ set_profile() {
     return
   fi
   case "$to_set" in
-  devnet | testnet | premainnet | mainnet)
+  devnet | testnet | testnet2 | mainnet)
     yq -i eval ".node.profile=\"$to_set\"" "$config_path"
     log_success "Set profile to: $to_set"
     ;;
   *)
-    log_err "Invalid profile value. Choose from: devnet, testnet, premainnet, mainnet"
+    log_err "Invalid profile value. Choose from: devnet, testnet, testnet2, mainnet"
     return 1
     ;;
   esac
