@@ -42,7 +42,7 @@ config_generate() {
 
   log_info "Start generate miners configurations and docker-compose file"
 
-  patch_wasm_override_if_testnet
+#  patch_wasm_override_if_testnet
 
   rm -rf $build_dir
   mkdir -p $build_dir/.tmp

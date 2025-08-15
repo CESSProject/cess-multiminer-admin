@@ -1,14 +1,14 @@
 #!/bin/bash
 
-mineradm_version="v0.2.1"
-network_version="testnet-venus"
+mineradm_version="v0.2.2"
+network_version="testnet2"
 skip_chain="false"
 base_dir=/opt/cess/mineradm
 script_dir=$base_dir/scripts
 config_path=$base_dir/config.yaml
 build_dir=$base_dir/build
 compose_yaml=$build_dir/docker-compose.yaml
-profile="testnet"
+profile="testnet2"
 kernel_ver_req="5.11"
 docker_ver_req="20.10"
 yq_ver_req="4.25"
@@ -248,18 +248,18 @@ set_profile() {
     log_info "current profile value: $current_profile"
     return 0
   fi
-  if [ x"$to_set" == x"devnet" ] || [ x"$to_set" == x"testnet" ] || [ x"$to_set" == x"premainnet" ] || [ x"$to_set" == x"mainnet" ]; then
+  if [ x"$to_set" == x"devnet" ] || [ x"$to_set" == x"testnet" ] || [ x"$to_set" == x"testnet2" ] || [ x"$to_set" == x"mainnet" ]; then
     yq -i eval ".node.profile=\"$to_set\"" $config_path
     log_success "set profile to: $to_set"
     return 0
   fi
-  log_err "Invalid profile value in: devnet/testnet/premainnet/mainnet"
+  log_err "Invalid profile value in: devnet/testnet/testnet2/mainnet"
   return 1
 }
 
 load_profile() {
   local current_profile="$(yq eval ".node.profile" $config_path)"
-  if [ x"$current_profile" == x"devnet" ] || [ x"$current_profile" == x"testnet" ] || [ x"$current_profile" == x"premainnet" ] || [ x"$current_profile" == x"mainnet" ]; then
+  if [ x"$current_profile" == x"devnet" ] || [ x"$current_profile" == x"testnet" ] || [ x"$current_profile" == x"testnet2" ] || [ x"$current_profile" == x"mainnet" ]; then
     profile=$current_profile
     return 0
   fi
