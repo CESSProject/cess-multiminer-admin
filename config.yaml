@@ -1,8 +1,8 @@
 ## node configurations template
 node:
   mode: "multiminer"
-  ## the profile of node: devnet/testnet/testnet2/mainnet
-  profile: "testnet2"
+  ## the profile of node: devnet/testnet/premainnet/mainnet
+  profile: "premainnet"
   # default chain url for miner, can be overwritten in miners[] as below
   chainWsUrl: "ws://127.0.0.1:9944"
 
